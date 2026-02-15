@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # to_dolist
 
 A new Flutter project.
@@ -14,3 +15,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# todolist-app
+>>>>>>> 7120b552d08859da8561f8bdcbca148e607be1ee

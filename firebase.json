@@ -1,0 +1,69 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "todolist-1017",
+          "appId": "1:1046765374772:android:0505cec9ea9ed7a00da961",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "todolist-1017",
+          "configurations": {
+            "android": "1:1046765374772:android:0505cec9ea9ed7a00da961",
+            "ios": "1:1046765374772:ios:a2bb26e189d2917d0da961",
+            "macos": "1:1046765374772:ios:a2bb26e189d2917d0da961",
+            "web": "1:1046765374772:web:27a27cf1d852fa770da961",
+            "windows": "1:1046765374772:web:f96e4cf2ed7cec350da961"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-southeast1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" ci",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+    "hosting": {
+    "public": "build/web",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "/api/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store" }
+        ]
+      }
+    ],
+    "rewrites": [
+      { "source": "/privacy", "destination": "/privacy.html" },
+      {
+        "source": "/api{,/**}",
+        "function": { "functionId": "api", "region": "asia-southeast1" }
+      },
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}

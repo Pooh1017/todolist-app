@@ -1,0 +1,255 @@
+{
+  "@@locale": "en",
+
+  "settings": "Settings",
+  "language": "Language",
+  "thai": "ไทย",
+  "english": "English",
+
+  "settingsTitle": "Settings",
+  "sectionCustomize": "Customize",
+  "sectionDateTime": "Date & Time",
+  "sectionAbout": "About",
+
+  "account": "Account",
+  "theme": "Theme",
+  "notificationsAndReminder": "Notifications & Reminders",
+  "dateFormat": "Date format",
+  "defaultReminder": "Default reminder",
+  "shareApp": "Share app",
+  "rate5Stars": "Rate stars",
+  "contactUs": "Contact us",
+  "feedback": "Feedback",
+
+  "system": "System",
+  "light": "Light",
+  "dark": "Dark",
+
+  "onText": "On",
+  "offText": "Off",
+
+  "dateFmtDmySlash": "Day/Month/Year",
+  "dateFmtMdySlash": "Month/Day/Year",
+  "dateFmtYmdDash": "Year-Month-Day",
+  "dateFmtDmyDash": "Day-Month-Year",
+
+  "versionLabel": "Version: {v}",
+  "@versionLabel": {
+    "placeholders": {
+      "v": { "type": "String" }
+    }
+  },
+
+  "minutes": "{m} min",
+  "@minutes": {
+    "placeholders": {
+      "m": { "type": "int" }
+    }
+  },
+
+  "shareMessage": "Try this To-Do app: {link}",
+  "@shareMessage": {
+    "placeholders": {
+      "link": { "type": "String" }
+    }
+  },
+
+  "logout": "Log out",
+  "cancel": "Cancel",
+  "save": "Save",
+  "ok": "OK",
+  "now": "Now",
+  "send": "Send",
+
+  "username": "Username",
+  "email": "Email",
+  "userId": "User ID",
+  "signedInWith": "Signed in with",
+  "notSetName": "No name set",
+
+  "logoutConfirmTitle": "Log out?",
+  "logoutConfirmBody": "Do you want to log out now?",
+
+  "providerGoogle": "Google",
+  "providerEmailPassword": "Email / Password",
+  "providerPhone": "Phone number",
+
+  "feedbackPrompt": "Type your feedback",
+  "feedbackHint": "Write a message...",
+  "feedbackSentExample": "Feedback sent (example)",
+
+  "facebookPage": "Facebook Page",
+  "facebookPlaceholder": "Add real link here",
+  "supportEmail": "thaitanapooh@email.com",
+
+  "notificationsTitle": "Notifications",
+  "notificationsEnableTitle": "Enable notifications",
+  "notificationsEnableSubtitle": "Remind before the scheduled time",
+
+  "rateThanksTitle": "Thanks for your support!",
+  "rateNoteSubtitle": "In the next step, this can open the real Store page.",
+  "goToStore": "Open Store page",
+  "goBack": "Go back",
+  "rateSnackExample": "Example: Open Store page",
+
+  "remindBefore": "Remind before",
+
+  "themeApplyAllApp": "Change the app theme",
+  "themeChooseHint": "Choose: Light / Dark",
+  "themeLightDesc": "Bright background, easy to read",
+  "themeDarkDesc": "Modern dark look, easier on eyes at night",
+  "themeNote": "Note: The app will save your choice and apply it immediately.",
+
+  "drawerAppTitle": "To Do List",
+  "drawerAppSubtitle": "Manage your tasks easily",
+
+  "drawerMenuSection": "Menu",
+  "drawerTodo": "To-do",
+
+  "drawerCategorySection": "Categories",
+  "drawerCategoriesTitle": "Categories",
+  "drawerCategoriesSubtitle": "Choose a category to view",
+
+  "drawerCatWork": "Work",
+  "drawerCatWorkSub": "View all work tasks",
+
+  "drawerCatTodo": "To-do",
+  "drawerCatTodoSub": "To-do and starred items",
+
+  "drawerCatPlan": "Planned",
+  "drawerCatPlanSub": "Scheduled / planned tasks",
+
+  "drawerCatImportant": "Due soon",
+  "drawerCatImportantSub": "Upcoming deadlines / urgent tasks",
+
+  "calendarTitle": "Calendar",
+  "calendarItemsTitle": "Items on {date}",
+  "@calendarItemsTitle": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "calendarEmptyHint": "No items today. Tap + to add one.",
+
+  "addItemTitle": "Add item",
+  "typeItemHint": "Type an item...",
+  "selectedDayLabel": "Selected day",
+  "setTimeLabel": "Set time",
+
+  "timeInputTitle": "Enter time",
+  "timeInputHint": "HH:mm e.g. 09:30",
+  "timeInputInvalid": "Please enter time as HH:mm (e.g. 09:30, 18:05)",
+
+  "searchTitle": "Search",
+  "searchHint": "Search by title or category...",
+  "searchEmpty": "No results",
+
+  "todoAllTitle": "To-do (Starred included)",
+  "categoryEmptyHint": "No items in this category.\nTap + to add.",
+
+  "addInCategoryTitle": "Add to “{category}”",
+  "@addInCategoryTitle": {
+    "placeholders": {
+      "category": { "type": "String" }
+    }
+  },
+
+  "pickDate": "Pick date",
+  "pickTime": "Pick time",
+  "timeInvalidHint": "Please enter time in HH:mm (e.g. 09:30, 18:05)",
+
+  "appTitle": "To-Do List",
+
+  "homeToday": "Today",
+  "homeFuture": "Upcoming",
+  "homeOverdue": "Overdue",
+  "homeDone": "Completed",
+
+  "emptyHome": "No tasks yet.\nTap + to add one.",
+  "emptyToday": "No tasks for today",
+  "emptyFuture": "No upcoming tasks",
+  "emptyOverdue": "No overdue tasks",
+  "emptyDone": "No completed tasks",
+
+  "addTaskTitle": "Add task",
+  "addTaskHint": "Type your task...",
+  "dueLabel": "Due: {dt}",
+  "@dueLabel": {
+    "placeholders": {
+      "dt": { "type": "String" }
+    }
+  },
+
+  "chooseDate": "Choose date",
+  "enterTime": "Enter time",
+
+  "nearDueAllTitle": "Due soon",
+  "nearDueAllEmpty": "No tasks due soon",
+
+  "itemsCount": "{n} items",
+  "@itemsCount": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+
+  "overviewTitle": "Overview",
+  "overviewDoneCard": "Completed tasks",
+  "overviewPendingCard": "Pending tasks",
+  "overviewPieTitle": "Task distribution",
+  "overviewEmptyAll": "No tasks yet",
+  "overviewNext30Title": "Tasks in 30 days",
+  "overviewNext30Empty": "No tasks in 30 days",
+  "overviewCountLabel": "Tasks",
+
+  "statusDone": "Completed",
+  "statusOverdue": "Overdue",
+  "statusInProgress": "In progress",
+  "statusNearDue": "Due soon",
+
+  "todoAllTitle": "To-do (Starred included)",
+  "categoryEmptyHint": "No items in this category.\nTap + to add.",
+  "addItemTitle": "Add item",
+  "addInCategoryTitle": "Add to “{category}”",
+  "@addInCategoryTitle": { "placeholders": { "category": { "type": "String" } } },
+  "addItemHint": "Type an item...",
+  "pickDate": "Pick date",
+  "pickTime": "Pick time",
+  "timeInputTitle": "Enter time",
+  "timeInputHint": "HH:mm e.g. 09:30",
+  "timeInvalidHint": "Please enter time in HH:mm (e.g. 09:30, 18:05)",
+  "nowText": "Now",
+  "okText": "OK",
+  "save": "Save",
+
+  "dueDate": "Due date",
+  "timeAndReminder": "Time & reminder",
+  "remindAt": "Remind at",
+  "reminderType": "Reminder type",
+  "note": "Note",
+  "addSubtask": "Add subtask",
+  "addSubtaskTitle": "Add subtask",
+  "addSubtaskHint": "Type subtask...",
+  "addText": "Add",
+  "close": "Close",
+  "deleteTaskTitle": "Delete this task?",
+  "deleteTaskBody": "This cannot be undone.",
+  "delete": "Delete",
+  "duplicate": "Duplicate",
+  "duplicatedSnack": "Duplicated",
+  "completed": "Completed",
+  "notDone": "Not done",
+
+  "remindOnTime": "On time",
+  "remindMinutesBefore": "{m} min before",
+  "@remindMinutesBefore": { "placeholders": { "m": { "type": "int" } } },
+  "remindHoursBefore": "{h} hr before",
+  "@remindHoursBefore": { "placeholders": { "h": { "type": "int" } } },
+  "remindDaysBefore": "{d} day before",
+  "@remindDaysBefore": { "placeholders": { "d": { "type": "int" } } },
+
+  "remindTypeNotify": "Notification",
+  "remindTypeSound": "Sound",
+  "remindTypeVibrate": "Vibrate"
+
+}

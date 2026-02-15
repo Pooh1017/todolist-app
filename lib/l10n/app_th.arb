@@ -1,0 +1,255 @@
+{
+  "@@locale": "th",
+
+  "settings": "ตั้งค่า",
+  "language": "ภาษา",
+  "thai": "ไทย",
+  "english": "English",
+
+  "settingsTitle": "การตั้งค่า",
+  "sectionCustomize": "ปรับแต่ง",
+  "sectionDateTime": "วันที่ & เวลา",
+  "sectionAbout": "เกี่ยวกับ",
+
+  "account": "บัญชี",
+  "theme": "ธีม",
+  "notificationsAndReminder": "การแจ้งเตือน & เตือนความจำ",
+  "dateFormat": "รูปแบบวันที่",
+  "defaultReminder": "ค่าเริ่มต้นการแจ้งเตือน",
+  "shareApp": "แบ่งปันแอพ",
+  "rate5Stars": "ให้ดาว",
+  "contactUs": "ติดต่อเรา",
+  "feedback": "ความคิดเห็น",
+
+  "system": "ตามระบบ",
+  "light": "สว่าง",
+  "dark": "มืด",
+
+  "onText": "เปิด",
+  "offText": "ปิด",
+
+  "dateFmtDmySlash": "วัน/เดือน/ปี",
+  "dateFmtMdySlash": "เดือน/วัน/ปี",
+  "dateFmtYmdDash": "ปี-เดือน-วัน",
+  "dateFmtDmyDash": "วัน-เดือน-ปี",
+
+  "versionLabel": "เวอร์ชัน: {v}",
+  "@versionLabel": {
+    "placeholders": {
+      "v": { "type": "String" }
+    }
+  },
+
+  "minutes": "{m} นาที",
+  "@minutes": {
+    "placeholders": {
+      "m": { "type": "int" }
+    }
+  },
+
+  "shareMessage": "ลองใช้แอพ To Do List: {link}",
+  "@shareMessage": {
+    "placeholders": {
+      "link": { "type": "String" }
+    }
+  },
+
+  "logout": "ออกจากระบบ",
+  "cancel": "ยกเลิก",
+  "save": "บันทึก",
+  "ok": "ตกลง",
+  "now": "ตอนนี้",
+  "send": "ส่ง",
+
+  "username": "ชื่อผู้ใช้",
+  "email": "อีเมล",
+  "userId": "User ID",
+  "signedInWith": "เข้าสู่ระบบด้วย",
+  "notSetName": "ยังไม่ได้ตั้งชื่อ",
+
+  "logoutConfirmTitle": "ออกจากระบบ?",
+  "logoutConfirmBody": "คุณต้องการออกจากระบบตอนนี้หรือไม่?",
+
+  "providerGoogle": "Google",
+  "providerEmailPassword": "อีเมล / รหัสผ่าน",
+  "providerPhone": "เบอร์โทรศัพท์",
+
+  "feedbackPrompt": "พิมพ์ความคิดเห็นของคุณ",
+  "feedbackHint": "เขียนข้อความ...",
+  "feedbackSentExample": "ส่งความคิดเห็นแล้ว (ตัวอย่าง)",
+
+  "facebookPage": "เพจ Facebook",
+  "facebookPlaceholder": "สามารถเพิ่มลิงก์จริงได้",
+  "supportEmail": "thaitanapooh@email.com",
+
+  "notificationsTitle": "การแจ้งเตือน",
+  "notificationsEnableTitle": "เปิดการแจ้งเตือน",
+  "notificationsEnableSubtitle": "แจ้งเตือนก่อนถึงเวลาที่ตั้งไว้",
+
+  "rateThanksTitle": "ขอบคุณสำหรับการสนับสนุน!",
+  "rateNoteSubtitle": "จะต่อไปหน้า Store จริงได้ในขั้นต่อไป",
+  "goToStore": "ไปที่หน้า Store",
+  "goBack": "กลับไปก่อน",
+  "rateSnackExample": "ตัวอย่าง: ไปหน้า Store",
+
+  "remindBefore": "เตือนล่วงหน้า",
+
+  "themeApplyAllApp": "เปลี่ยนธีมทั้งแอพ",
+  "themeChooseHint": "เลือกได้: สว่าง / มืด",
+  "themeLightDesc": "พื้นหลังสว่าง อ่านง่าย สบายตา",
+  "themeDarkDesc": "ดำอมฟ้า ดูทันสมัย ถนอมสายตากลางคืน",
+  "themeNote": "หมายเหตุ: ระบบจะบันทึกค่าที่คุณเลือกไว้ และนำไปใช้ทันที",
+
+  "drawerAppTitle": "To Do List",
+  "drawerAppSubtitle": "จัดการงานของคุณแบบง่าย ๆ",
+
+  "drawerMenuSection": "เมนู",
+  "drawerTodo": "สิ่งที่ต้องทำ",
+
+  "drawerCategorySection": "ประเภท",
+  "drawerCategoriesTitle": "ประเภท",
+  "drawerCategoriesSubtitle": "เลือกหมวดที่ต้องการดู",
+
+  "drawerCatWork": "งาน",
+  "drawerCatWorkSub": "ดูรายการงานทั้งหมด",
+
+  "drawerCatTodo": "สิ่งที่ต้องทำ",
+  "drawerCatTodoSub": "รายการที่ต้องทำและรายการสำคัญ",
+
+  "drawerCatPlan": "ที่วางแผนไว้",
+  "drawerCatPlanSub": "งานที่นัดหมาย/วางแผนไว้",
+
+  "drawerCatImportant": "ใกล้ครบกำหนด",
+  "drawerCatImportantSub": "งานที่ใกล้ถึงกำหนด/ต้องรีบทำ",
+
+  "calendarTitle": "ปฏิทิน",
+  "calendarItemsTitle": "รายการ {date}",
+  "@calendarItemsTitle": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "calendarEmptyHint": "ไม่มีรายการในวันนี้ กด + เพื่อเพิ่ม",
+
+  "addItemTitle": "เพิ่มรายการ",
+  "typeItemHint": "พิมพ์รายการ...",
+  "selectedDayLabel": "วันเลือก",
+  "setTimeLabel": "ใส่เวลา",
+
+  "timeInputTitle": "ใส่เวลา",
+  "timeInputHint": "HH:mm เช่น 09:30",
+  "timeInputInvalid": "กรุณาใส่เวลาเป็น HH:mm (เช่น 09:30, 18:05)",
+
+  "searchTitle": "ค้นหา",
+  "searchHint": "ค้นหาจากชื่อหรือหมวด...",
+  "searchEmpty": "ไม่พบรายการ",
+
+  "todoAllTitle": "สิ่งที่ต้องทำ (รวมดาว)",
+  "categoryEmptyHint": "ยังไม่มีรายการในหมวดนี้\nกด + เพื่อเพิ่ม",
+
+  "addInCategoryTitle": "เพิ่มในหมวด “{category}”",
+  "@addInCategoryTitle": {
+    "placeholders": {
+      "category": { "type": "String" }
+    }
+  },
+
+  "pickDate": "เลือกวันที่",
+  "pickTime": "ใส่เวลา",
+  "timeInvalidHint": "กรุณาใส่เวลาเป็น HH:mm (เช่น 09:30, 18:05)",
+
+  "appTitle": "To Do List",
+
+  "homeToday": "วันนี้",
+  "homeFuture": "งานถัดไป",
+  "homeOverdue": "เลยกำหนด",
+  "homeDone": "เสร็จแล้ว",
+
+  "emptyHome": "ยังไม่มีรายการ\nกด + เพื่อเพิ่มงาน",
+  "emptyToday": "ยังไม่มีงานวันนี้",
+  "emptyFuture": "ยังไม่มีงานถัดไป",
+  "emptyOverdue": "ยังไม่มีงานเลยกำหนด",
+  "emptyDone": "ยังไม่มีงานที่เสร็จแล้ว",
+
+  "addTaskTitle": "เพิ่มรายการ",
+  "addTaskHint": "พิมพ์สิ่งที่ต้องทำ...",
+  "dueLabel": "กำหนด: {dt}",
+  "@dueLabel": {
+    "placeholders": {
+      "dt": { "type": "String" }
+    }
+  },
+
+  "chooseDate": "เลือกวันที่",
+  "enterTime": "ใส่เวลา",
+
+  "nearDueAllTitle": "ใกล้ครบกำหนด",
+  "nearDueAllEmpty": "ยังไม่มีงานที่ใกล้ครบกำหนด",
+
+  "itemsCount": "{n} รายการ",
+  "@itemsCount": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+
+  "overviewTitle": "ภาพรวม",
+  "overviewDoneCard": "งานที่เสร็จสมบูรณ์",
+  "overviewPendingCard": "งานที่รอดำเนินการ",
+  "overviewPieTitle": "สัดส่วนงานทั้งหมด",
+  "overviewEmptyAll": "ยังไม่มีงานในระบบ",
+  "overviewNext30Title": "งานใน 30 วัน",
+  "overviewNext30Empty": "ไม่มีงานใน 30 วัน",
+  "overviewCountLabel": "จำนวนงาน",
+
+  "statusDone": "เสร็จแล้ว",
+  "statusOverdue": "เลยกำหนด",
+  "statusInProgress": "รอดำเนินการ",
+  "statusNearDue": "ใกล้ครบกำหนด",
+
+  "todoAllTitle": "สิ่งที่ต้องทำ (รวมดาว)",
+  "categoryEmptyHint": "ยังไม่มีรายการในหมวดนี้\nกด + เพื่อเพิ่ม",
+  "addItemTitle": "เพิ่มรายการ",
+  "addInCategoryTitle": "เพิ่มในหมวด “{category}”",
+  "@addInCategoryTitle": { "placeholders": { "category": { "type": "String" } } },
+  "addItemHint": "พิมพ์รายการ...",
+  "pickDate": "เลือกวันที่",
+  "pickTime": "ใส่เวลา",
+  "timeInputTitle": "ใส่เวลา",
+  "timeInputHint": "HH:mm เช่น 09:30",
+  "timeInvalidHint": "กรุณาใส่เวลาเป็น HH:mm (เช่น 09:30, 18:05)",
+  "nowText": "ตอนนี้",
+  "okText": "ตกลง",
+  "save": "บันทึก",
+
+  "dueDate": "วันที่ครบกำหนด",
+  "timeAndReminder": "เวลา & แจ้งเตือน",
+  "remindAt": "การแจ้งเตือนที่",
+  "reminderType": "ประเภทการแจ้งเตือน",
+  "note": "หมายเหตุ",
+  "addSubtask": "เพิ่มงานย่อย",
+  "addSubtaskTitle": "เพิ่มงานย่อย",
+  "addSubtaskHint": "พิมพ์งานย่อย...",
+  "addText": "เพิ่ม",
+  "close": "ปิด",
+  "deleteTaskTitle": "ลบรายการนี้?",
+  "deleteTaskBody": "การลบจะไม่สามารถกู้คืนได้",
+  "delete": "ลบ",
+  "duplicate": "สร้างสำเนา",
+  "duplicatedSnack": "สร้างสำเนาแล้ว",
+  "completed": "เสร็จแล้ว",
+  "notDone": "ยังไม่เสร็จ",
+
+  "remindOnTime": "ตรงเวลา",
+  "remindMinutesBefore": "{m} นาที ก่อน",
+  "@remindMinutesBefore": { "placeholders": { "m": { "type": "int" } } },
+  "remindHoursBefore": "{h} ชม. ก่อน",
+  "@remindHoursBefore": { "placeholders": { "h": { "type": "int" } } },
+  "remindDaysBefore": "{d} วัน ก่อน",
+  "@remindDaysBefore": { "placeholders": { "d": { "type": "int" } } },
+
+  "remindTypeNotify": "การแจ้งเตือน",
+  "remindTypeSound": "เสียง",
+  "remindTypeVibrate": "สั่น"
+
+}

@@ -16,6 +16,7 @@ import 'task_detail_page.dart';
 import 'utils/date_fmt.dart';
 
 import 'l10n/app_localizations.dart';
+import 'sync/sync_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,7 +26,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // ใช้เป็น fallback เฉพาะ light gradient เดิม
   static const _bgTop = Color(0xFFF6F7FB);
   static const _bgBottom = Color(0xFFF1F3F8);
 
@@ -43,7 +43,7 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey _calendarKey = GlobalKey();
   final GlobalKey _overviewKey = GlobalKey();
 
-  int _tabIndex = 1; // 1=Home
+  int _tabIndex = 1;
   bool _loading = true;
 
   final List<Task> _tasks = [];
@@ -53,30 +53,25 @@ class _HomePageState extends State<HomePage> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  // ✅ ใช้สำหรับเวลา HH:mm อย่างเดียว
   String _two(int n) => n.toString().padLeft(2, '0');
 
-  // ============================
-  // ✅ Category key system (รองรับข้อมูลเก่าเป็นภาษาไทยด้วย)
-  // ============================
   static const String _kWork = 'work';
   static const String _kTodoAll = 'todo_all';
   static const String _kPlan = 'plan';
   static const String _kNearDue = 'near_due';
 
   String _catKeyOf(Task t) {
-    final c = (t.category).trim();
+    final c = t.category.trim();
 
-    // ✅ ข้อมูลใหม่: เก็บเป็น key
-    if (c == _kWork || c == _kTodoAll || c == _kPlan || c == _kNearDue) return c;
+    if (c == _kWork || c == _kTodoAll || c == _kPlan || c == _kNearDue) {
+      return c;
+    }
 
-    // ✅ รองรับข้อมูลเก่า (ไทย)
     if (c == 'งาน') return _kWork;
     if (c == 'สิ่งที่ต้องทำ') return _kTodoAll;
     if (c == 'ที่วางแผนไว้') return _kPlan;
     if (c == 'ใกล้ครบกำหนด') return _kNearDue;
 
-    // fallback: ถ้าเป็นหมวดอื่นๆ ในอนาคต
     return c;
   }
 
@@ -94,12 +89,10 @@ class _HomePageState extends State<HomePage> {
       case _kNearDue:
         return tr.drawerCatImportant;
       default:
-        // รองรับกรณีถูกส่งมาเป็นไทยเก่าโดยตรง
         if (key == 'งาน') return tr.drawerCatWork;
         if (key == 'สิ่งที่ต้องทำ') return tr.drawerCatTodo;
         if (key == 'ที่วางแผนไว้') return tr.drawerCatPlan;
         if (key == 'ใกล้ครบกำหนด') return tr.drawerCatImportant;
-
         return key;
     }
   }
@@ -122,7 +115,7 @@ class _HomePageState extends State<HomePage> {
 
   void _refreshTab(int i) {
     if (i == 1) {
-      _reload();
+      _reloadAfterSync();
       return;
     }
     if (i == 2) {
@@ -140,13 +133,24 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _reload();
+    _reloadAfterSync();
+  }
+
+  Future<void> _reloadAfterSync() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid?.trim() ?? '';
+    if (uid.isNotEmpty) {
+      await SyncService.instance.syncNow();
+    }
+    await _reload();
   }
 
   Future<void> _reload() async {
+    if (!mounted) return;
+
     setState(() => _loading = true);
     final data = await TaskDao.instance.getAll();
     if (!mounted) return;
+
     setState(() {
       _tasks
         ..clear()
@@ -167,11 +171,11 @@ class _HomePageState extends State<HomePage> {
         builder: (_) => CategoryPage(
           title: title,
           primaryColor: color,
-          categoryKey: categoryKey, // ✅ logic (key)
+          categoryKey: categoryKey,
         ),
       ),
     );
-    await _reload();
+    await _reloadAfterSync();
   }
 
   Future<void> _handleDrawerSelect(String key) async {
@@ -214,7 +218,6 @@ class _HomePageState extends State<HomePage> {
           await _openNearDueAll(context);
           break;
 
-        // map key เก่า
         case 'important':
           await _openCategory(
             context,
@@ -235,7 +238,7 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (_) => const SearchPage()),
     );
-    await _reload();
+    await _reloadAfterSync();
   }
 
   Future<void> _openNearDueAll(BuildContext context) async {
@@ -243,7 +246,7 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (_) => const NearDueAllPage()),
     );
-    await _reload();
+    await _reloadAfterSync();
   }
 
   Future<void> _openTask(Task t) async {
@@ -251,7 +254,7 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (_) => TaskDetailPage(task: t)),
     );
-    if (changed == true) await _reload();
+    if (changed == true) await _reloadAfterSync();
   }
 
   Future<TimeOfDay?> _showThaiTimeInputDialog({
@@ -326,7 +329,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ Dialog เพิ่มรายการ (เก็บ category เป็น key)
   Future<void> _openAddDialog() async {
     final ctrl = TextEditingController();
     final tr = AppLocalizations.of(context)!;
@@ -334,8 +336,9 @@ class _HomePageState extends State<HomePage> {
     DateTime pickedDateTime = _selectedDateForNewTask;
     String pickedCatKey = _kWork;
 
-    // ✅ ตัวแปรที่คุณใช้ตอนสร้าง Task ต้องประกาศใน scope นี้
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid?.trim() ?? '';
+    if (uid.isEmpty) return;
+
     final nowMs = DateTime.now().millisecondsSinceEpoch;
 
     final result = await showGeneralDialog<Task>(
@@ -451,8 +454,7 @@ class _HomePageState extends State<HomePage> {
                                   _catLabel(context, _kWork),
                                   pickedCatKey == _kWork,
                                   _green,
-                                  () => setLocalState(
-                                      () => pickedCatKey = _kWork),
+                                  () => setLocalState(() => pickedCatKey = _kWork),
                                 ),
                                 _chip(
                                   context,
@@ -467,8 +469,7 @@ class _HomePageState extends State<HomePage> {
                                   _catLabel(context, _kPlan),
                                   pickedCatKey == _kPlan,
                                   _blue,
-                                  () => setLocalState(
-                                      () => pickedCatKey = _kPlan),
+                                  () => setLocalState(() => pickedCatKey = _kPlan),
                                 ),
                                 _chip(
                                   context,
@@ -489,17 +490,24 @@ class _HomePageState extends State<HomePage> {
                                     onTap: pickDate,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 12),
+                                        horizontal: 14,
+                                        vertical: 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: tint(
-                                            card, _blue, isDark ? 0.16 : 0.08),
+                                          card,
+                                          _blue,
+                                          isDark ? 0.16 : 0.08,
+                                        ),
                                         borderRadius: BorderRadius.circular(18),
                                         border: Border.all(color: line),
                                       ),
                                       child: Row(
                                         children: [
-                                          Icon(Icons.event_rounded,
-                                              color: _blue.withOpacity(0.90)),
+                                          Icon(
+                                            Icons.event_rounded,
+                                            color: _blue.withOpacity(0.90),
+                                          ),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Text(
@@ -523,17 +531,24 @@ class _HomePageState extends State<HomePage> {
                                     onTap: pickTime,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 12),
+                                        horizontal: 14,
+                                        vertical: 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: tint(
-                                            card, _blue, isDark ? 0.16 : 0.08),
+                                          card,
+                                          _blue,
+                                          isDark ? 0.16 : 0.08,
+                                        ),
                                         borderRadius: BorderRadius.circular(18),
                                         border: Border.all(color: line),
                                       ),
                                       child: Row(
                                         children: [
-                                          Icon(Icons.access_time_rounded,
-                                              color: _blue.withOpacity(0.90)),
+                                          Icon(
+                                            Icons.access_time_rounded,
+                                            color: _blue.withOpacity(0.90),
+                                          ),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Text(
@@ -571,7 +586,8 @@ class _HomePageState extends State<HomePage> {
                                     onPressed: () => Navigator.pop(context),
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
+                                        vertical: 12,
+                                      ),
                                       foregroundColor:
                                           scheme.onSurface.withOpacity(0.75),
                                     ),
@@ -585,7 +601,6 @@ class _HomePageState extends State<HomePage> {
                                       final text = ctrl.text.trim();
                                       if (text.isEmpty) return;
 
-                                      // ✅ ใช้ factory ที่คุณมีอยู่แล้ว กันพังเรื่อง updatedAt/syncState
                                       Navigator.pop(
                                         context,
                                         Task.newLocal(
@@ -601,7 +616,8 @@ class _HomePageState extends State<HomePage> {
                                       foregroundColor: Colors.white,
                                       elevation: 0,
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
+                                        vertical: 12,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
@@ -623,7 +639,8 @@ class _HomePageState extends State<HomePage> {
         );
       },
       transitionBuilder: (_, anim, __, child) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        final curved =
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
         return FadeTransition(
           opacity: curved,
           child: ScaleTransition(
@@ -636,13 +653,11 @@ class _HomePageState extends State<HomePage> {
 
     if (result == null) return;
 
-    // ✅ ปรับ updatedAt เป็นเวลาปัจจุบัน (ถ้าคุณอยากบังคับแน่นอน)
-    // (ไม่จำเป็นก็ได้ เพราะ newLocal ใส่ให้แล้ว)
     final saveTask = result.copyWith(updatedAt: nowMs);
 
     await TaskDao.instance.insert(saveTask);
     _selectedDateForNewTask = saveTask.date;
-    await _reload();
+    await _reloadAfterSync();
   }
 
   Widget _chip(
@@ -658,7 +673,7 @@ class _HomePageState extends State<HomePage> {
     final base = scheme.surface;
     final bg = selected ? accent.withOpacity(isDark ? 0.22 : 0.18) : base;
     final border = selected
-        ? accent.withOpacity(isDark ? 0.55 : 0.55)
+        ? accent.withOpacity(0.55)
         : (isDark
             ? Colors.white.withOpacity(0.12)
             : Colors.black.withOpacity(0.08));
@@ -810,8 +825,6 @@ class _HomePageState extends State<HomePage> {
         index: _tabIndex,
         children: [
           const SizedBox.shrink(),
-
-          // 1 Home
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -951,30 +964,34 @@ class _HomePageState extends State<HomePage> {
                                   tr.homeToday,
                                   _expandToday,
                                   () => setState(
-                                      () => _expandToday = !_expandToday),
+                                    () => _expandToday = !_expandToday,
+                                  ),
                                 ),
                                 if (_expandToday && todayList.isNotEmpty)
-                                  ...todayList.map((t) => _TaskRow(
-                                        task: t,
-                                        categoryText:
-                                            _catLabel(context, _catKeyOf(t)),
-                                        onToggleDone: () async {
-                                          await TaskDao.instance.toggleDone(t);
-                                          await _reload();
-                                        },
-                                        onToggleStar: () async {
-                                          await TaskDao.instance.toggleStar(t);
-                                          await _reload();
-                                        },
-                                        onDelete: () async {
-                                          if (t.id != null) {
-                                            await TaskDao.instance
-                                                .deleteById(t.id!);
-                                            await _reload();
-                                          }
-                                        },
-                                        onOpen: () => _openTask(t),
-                                      )),
+                                  ...todayList.map(
+                                    (t) => _TaskRow(
+                                      task: t,
+                                      categoryText:
+                                          _catLabel(context, _catKeyOf(t)),
+                                      onToggleDone: () async {
+                                        await TaskDao.instance.toggleDone(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onToggleStar: () async {
+                                        await TaskDao.instance.toggleStar(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onDelete: () async {
+                                        if (t.id != null) {
+                                          await TaskDao.instance.deleteById(t.id!);
+                                        } else {
+                                          await TaskDao.instance.deleteTask(t);
+                                        }
+                                        await _reloadAfterSync();
+                                      },
+                                      onOpen: () => _openTask(t),
+                                    ),
+                                  ),
                                 if (_expandToday && todayList.isEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
@@ -992,30 +1009,34 @@ class _HomePageState extends State<HomePage> {
                                   tr.homeFuture,
                                   _expandFuture,
                                   () => setState(
-                                      () => _expandFuture = !_expandFuture),
+                                    () => _expandFuture = !_expandFuture,
+                                  ),
                                 ),
                                 if (_expandFuture && futureList.isNotEmpty)
-                                  ...futureList.map((t) => _TaskRow(
-                                        task: t,
-                                        categoryText:
-                                            _catLabel(context, _catKeyOf(t)),
-                                        onToggleDone: () async {
-                                          await TaskDao.instance.toggleDone(t);
-                                          await _reload();
-                                        },
-                                        onToggleStar: () async {
-                                          await TaskDao.instance.toggleStar(t);
-                                          await _reload();
-                                        },
-                                        onDelete: () async {
-                                          if (t.id != null) {
-                                            await TaskDao.instance
-                                                .deleteById(t.id!);
-                                            await _reload();
-                                          }
-                                        },
-                                        onOpen: () => _openTask(t),
-                                      )),
+                                  ...futureList.map(
+                                    (t) => _TaskRow(
+                                      task: t,
+                                      categoryText:
+                                          _catLabel(context, _catKeyOf(t)),
+                                      onToggleDone: () async {
+                                        await TaskDao.instance.toggleDone(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onToggleStar: () async {
+                                        await TaskDao.instance.toggleStar(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onDelete: () async {
+                                        if (t.id != null) {
+                                          await TaskDao.instance.deleteById(t.id!);
+                                        } else {
+                                          await TaskDao.instance.deleteTask(t);
+                                        }
+                                        await _reloadAfterSync();
+                                      },
+                                      onOpen: () => _openTask(t),
+                                    ),
+                                  ),
                                 if (_expandFuture && futureList.isEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
@@ -1033,30 +1054,34 @@ class _HomePageState extends State<HomePage> {
                                   tr.homeOverdue,
                                   _expandBefore,
                                   () => setState(
-                                      () => _expandBefore = !_expandBefore),
+                                    () => _expandBefore = !_expandBefore,
+                                  ),
                                 ),
                                 if (_expandBefore && overdueList.isNotEmpty)
-                                  ...overdueList.map((t) => _TaskRow(
-                                        task: t,
-                                        categoryText:
-                                            _catLabel(context, _catKeyOf(t)),
-                                        onToggleDone: () async {
-                                          await TaskDao.instance.toggleDone(t);
-                                          await _reload();
-                                        },
-                                        onToggleStar: () async {
-                                          await TaskDao.instance.toggleStar(t);
-                                          await _reload();
-                                        },
-                                        onDelete: () async {
-                                          if (t.id != null) {
-                                            await TaskDao.instance
-                                                .deleteById(t.id!);
-                                            await _reload();
-                                          }
-                                        },
-                                        onOpen: () => _openTask(t),
-                                      )),
+                                  ...overdueList.map(
+                                    (t) => _TaskRow(
+                                      task: t,
+                                      categoryText:
+                                          _catLabel(context, _catKeyOf(t)),
+                                      onToggleDone: () async {
+                                        await TaskDao.instance.toggleDone(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onToggleStar: () async {
+                                        await TaskDao.instance.toggleStar(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onDelete: () async {
+                                        if (t.id != null) {
+                                          await TaskDao.instance.deleteById(t.id!);
+                                        } else {
+                                          await TaskDao.instance.deleteTask(t);
+                                        }
+                                        await _reloadAfterSync();
+                                      },
+                                      onOpen: () => _openTask(t),
+                                    ),
+                                  ),
                                 if (_expandBefore && overdueList.isEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
@@ -1073,31 +1098,35 @@ class _HomePageState extends State<HomePage> {
                                   context,
                                   tr.homeDone,
                                   _expandDoneToday,
-                                  () => setState(() =>
-                                      _expandDoneToday = !_expandDoneToday),
+                                  () => setState(
+                                    () => _expandDoneToday = !_expandDoneToday,
+                                  ),
                                 ),
                                 if (_expandDoneToday && doneList.isNotEmpty)
-                                  ...doneList.map((t) => _TaskRow(
-                                        task: t,
-                                        categoryText:
-                                            _catLabel(context, _catKeyOf(t)),
-                                        onToggleDone: () async {
-                                          await TaskDao.instance.toggleDone(t);
-                                          await _reload();
-                                        },
-                                        onToggleStar: () async {
-                                          await TaskDao.instance.toggleStar(t);
-                                          await _reload();
-                                        },
-                                        onDelete: () async {
-                                          if (t.id != null) {
-                                            await TaskDao.instance
-                                                .deleteById(t.id!);
-                                            await _reload();
-                                          }
-                                        },
-                                        onOpen: () => _openTask(t),
-                                      )),
+                                  ...doneList.map(
+                                    (t) => _TaskRow(
+                                      task: t,
+                                      categoryText:
+                                          _catLabel(context, _catKeyOf(t)),
+                                      onToggleDone: () async {
+                                        await TaskDao.instance.toggleDone(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onToggleStar: () async {
+                                        await TaskDao.instance.toggleStar(t);
+                                        await _reloadAfterSync();
+                                      },
+                                      onDelete: () async {
+                                        if (t.id != null) {
+                                          await TaskDao.instance.deleteById(t.id!);
+                                        } else {
+                                          await TaskDao.instance.deleteTask(t);
+                                        }
+                                        await _reloadAfterSync();
+                                      },
+                                      onOpen: () => _openTask(t),
+                                    ),
+                                  ),
                                 if (_expandDoneToday && doneList.isEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 24),
@@ -1118,7 +1147,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-
           CalendarPage(key: _calendarKey),
           OverviewPage(key: _overviewKey),
         ],
@@ -1177,9 +1205,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// ============================
-// ✅ หน้า “ใกล้ครบกำหนดรวม”
-// ============================
 class NearDueAllPage extends StatefulWidget {
   const NearDueAllPage({super.key});
 
@@ -1194,20 +1219,30 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
   bool _loading = true;
   final List<Task> _tasks = [];
 
-  // ใช้ key เดียวกับ Home
   static const String _kNearDue = 'near_due';
 
   String _catKeyOf(Task t) {
-    final c = (t.category).trim();
+    final c = t.category.trim();
     if (c == _kNearDue) return c;
     if (c == 'ใกล้ครบกำหนด') return _kNearDue;
     return c;
   }
 
+  Future<void> _reloadAfterSync() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid?.trim() ?? '';
+    if (uid.isNotEmpty) {
+      await SyncService.instance.syncNow();
+    }
+    await _reload();
+  }
+
   Future<void> _reload() async {
+    if (!mounted) return;
+
     setState(() => _loading = true);
     final data = await TaskDao.instance.getAll();
     if (!mounted) return;
+
     setState(() {
       _tasks
         ..clear()
@@ -1219,7 +1254,7 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
   @override
   void initState() {
     super.initState();
-    _reload();
+    _reloadAfterSync();
   }
 
   Future<void> _openTask(Task t) async {
@@ -1227,7 +1262,7 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
       context,
       MaterialPageRoute(builder: (_) => TaskDetailPage(task: t)),
     );
-    if (changed == true) await _reload();
+    if (changed == true) await _reloadAfterSync();
   }
 
   @override
@@ -1289,8 +1324,10 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: line),
                         ),
-                        child: Icon(Icons.arrow_back_rounded,
-                            color: scheme.onSurface),
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          color: scheme.onSurface,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1329,25 +1366,29 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
                       : ListView(
                           physics: const BouncingScrollPhysics(),
                           children: [
-                            ...list.map((t) => _TaskRow(
-                                  task: t,
-                                  categoryText: tr.drawerCatImportant,
-                                  onToggleDone: () async {
-                                    await TaskDao.instance.toggleDone(t);
-                                    await _reload();
-                                  },
-                                  onToggleStar: () async {
-                                    await TaskDao.instance.toggleStar(t);
-                                    await _reload();
-                                  },
-                                  onDelete: () async {
-                                    if (t.id != null) {
-                                      await TaskDao.instance.deleteById(t.id!);
-                                      await _reload();
-                                    }
-                                  },
-                                  onOpen: () => _openTask(t),
-                                )),
+                            ...list.map(
+                              (t) => _TaskRow(
+                                task: t,
+                                categoryText: tr.drawerCatImportant,
+                                onToggleDone: () async {
+                                  await TaskDao.instance.toggleDone(t);
+                                  await _reloadAfterSync();
+                                },
+                                onToggleStar: () async {
+                                  await TaskDao.instance.toggleStar(t);
+                                  await _reloadAfterSync();
+                                },
+                                onDelete: () async {
+                                  if (t.id != null) {
+                                    await TaskDao.instance.deleteById(t.id!);
+                                  } else {
+                                    await TaskDao.instance.deleteTask(t);
+                                  }
+                                  await _reloadAfterSync();
+                                },
+                                onOpen: () => _openTask(t),
+                              ),
+                            ),
                             const SizedBox(height: 10),
                           ],
                         ),
@@ -1497,8 +1538,8 @@ class _TaskRow extends StatelessWidget {
 
   final Task task;
   final String categoryText;
-  final VoidCallback onToggleDone;
-  final VoidCallback onToggleStar;
+  final Future<void> Function() onToggleDone;
+  final Future<void> Function() onToggleStar;
   final Future<void> Function() onDelete;
   final VoidCallback onOpen;
 
@@ -1516,8 +1557,9 @@ class _TaskRow extends StatelessWidget {
 
     final now = DateTime.now();
     final overdue = !task.done && task.date.isBefore(now);
-    final nearDue =
-        !task.done && !overdue && task.date.difference(now) <= const Duration(days: 1);
+    final nearDue = !task.done &&
+        !overdue &&
+        task.date.difference(now) <= const Duration(days: 1);
 
     final dateColor = overdue
         ? Colors.red
@@ -1525,9 +1567,13 @@ class _TaskRow extends StatelessWidget {
             ? const Color(0xFFE0D51C)
             : mutedC;
 
+    final cloudId = task.cloudId.trim();
+    final safeKey = cloudId.isNotEmpty
+        ? 'task_$cloudId'
+        : 'task_${task.id ?? task.title}_${task.date.millisecondsSinceEpoch}';
+
     return Dismissible(
-      key: ValueKey(
-          'task_${task.id ?? task.title}_${task.date.millisecondsSinceEpoch}'),
+      key: ValueKey(safeKey),
       direction: DismissDirection.endToStart,
       background: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -1536,7 +1582,9 @@ class _TaskRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.red.withOpacity(isDark ? 0.20 : 0.12),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.red.withOpacity(isDark ? 0.35 : 0.25)),
+          border: Border.all(
+            color: Colors.red.withOpacity(isDark ? 0.35 : 0.25),
+          ),
         ),
         child: const Icon(Icons.delete_rounded, color: Colors.red),
       ),
@@ -1559,7 +1607,7 @@ class _TaskRow extends StatelessWidget {
             children: [
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: onToggleDone,
+                onTap: () async => onToggleDone(),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -1626,7 +1674,7 @@ class _TaskRow extends StatelessWidget {
               ),
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: onToggleStar,
+                onTap: () async => onToggleStar(),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -1642,7 +1690,9 @@ class _TaskRow extends StatelessWidget {
                     ),
                   ),
                   child: Icon(
-                    task.starred ? Icons.star_rounded : Icons.star_border_rounded,
+                    task.starred
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     color: task.starred ? const Color(0xFFE0D51C) : mutedC,
                   ),
                 ),
@@ -1705,7 +1755,6 @@ class _TimeTextInputFormatter extends TextInputFormatter {
   ) {
     final digits = newValue.text.replaceAll(':', '');
     final d = digits.length > 4 ? digits.substring(0, 4) : digits;
-
     final out = (d.length <= 2) ? d : '${d.substring(0, 2)}:${d.substring(2)}';
 
     return TextEditingValue(

@@ -7,6 +7,7 @@ import 'db/task_dao.dart';
 import 'db/subtask_dao.dart';
 import 'models/task.dart';
 import 'models/subtask.dart';
+import 'sync/sync_service.dart';
 
 // ✅ ใช้ formatter เดียวทั้งแอพ (ตาม Settings + Locale)
 import 'utils/date_fmt.dart';
@@ -27,15 +28,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   late TextEditingController _titleCtrl;
   late TextEditingController _noteCtrl;
 
-  // ✅ งานย่อยจาก DB
   bool _subLoading = true;
   final List<Subtask> _subtasks = [];
 
-  // Reminder (ชั่วคราว)
   Duration _remindBefore = const Duration(minutes: 5);
-  String _remindType = 'notify'; // ✅ เก็บเป็น key (ไม่ผูกภาษา)
+  String _remindType = 'notify';
 
-  // ✅ ใช้ส่งกลับว่ามีการเปลี่ยนแปลงไหม
   bool _changed = false;
 
   String get _uid => FirebaseAuth.instance.currentUser?.uid ?? _task.userId;
@@ -47,6 +45,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     _titleCtrl = TextEditingController(text: _task.title);
     _noteCtrl = TextEditingController(text: _task.note);
     _loadSubtasks();
+  }
+
+  Future<void> _syncNow() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid?.trim() ?? '';
+    if (uid.isEmpty) return;
+    await SyncService.instance.syncNow();
   }
 
   Future<void> _loadSubtasks() async {
@@ -79,11 +83,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     super.dispose();
   }
 
-  // -------- helpers --------
   String _two(int n) => n.toString().padLeft(2, '0');
   String _formatTime(DateTime dt) => '${_two(dt.hour)}:${_two(dt.minute)}';
 
-  // ✅ map categoryKey -> label (ตามภาษา) + รองรับไทยเก่า
   String _catKeyOfTask() {
     final c = _task.category.trim();
 
@@ -153,7 +155,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Color _tint(Color base, Color accent, double amount) =>
       Color.lerp(base, accent, amount) ?? base;
 
-  // ✅ reminder type key -> label (fallback)
   String _remindTypeLabel(AppLocalizations tr, String key) {
     final isTh = Localizations.localeOf(context).languageCode == 'th';
     switch (key) {
@@ -181,7 +182,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return isTh ? '${d.inDays} วัน ก่อน' : '${d.inDays} day before';
   }
 
-  // -------- save --------
   Future<void> _saveTitleIfChanged() async {
     final newTitle = _titleCtrl.text.trim();
     if (newTitle.isEmpty) return;
@@ -193,6 +193,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _syncNow();
 
     if (!mounted) return;
     setState(() => _task = updated);
@@ -209,6 +210,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _syncNow();
 
     if (!mounted) return;
     setState(() => _task = updated);
@@ -216,14 +218,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   }
 
   Future<void> _popSafely() async {
-    // ✅ บันทึกก่อนออกทุกครั้ง
     await _saveTitleIfChanged();
     await _saveNoteIfChanged();
+    await _syncNow();
     if (!mounted) return;
     Navigator.pop(context, _changed);
   }
 
-  // -------- pick category --------
   Future<void> _pickCategory() async {
     final tr = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
@@ -322,6 +323,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _syncNow();
 
     if (!mounted) return;
     setState(() => _task = updated);
@@ -344,13 +346,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _syncNow();
 
     if (!mounted) return;
     setState(() => _task = updated);
     _changed = true;
   }
 
-  // ✅ เวลาไทยแบบ “พิมพ์ใส่” HH:mm (24 ชม.)
   Future<TimeOfDay?> _showThaiTimeInputDialog({
     required TimeOfDay initial,
     required String title,
@@ -462,6 +464,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _syncNow();
 
     if (!mounted) return;
     setState(() => _task = updated);
@@ -616,7 +619,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     _changed = true;
   }
 
-  // -------- subtask actions --------
   Future<void> _addSubtask() async {
     final tr = AppLocalizations.of(context)!;
     final isTh = Localizations.localeOf(context).languageCode == 'th';
@@ -716,9 +718,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     if (ok != true) return;
 
-    // ✅ FIX: ใช้ deleteById (ใน DAO คุณเป็น soft delete)
     if (_task.id != null) {
       await TaskDao.instance.deleteById(_task.id!);
+      await _syncNow();
+    } else {
+      await TaskDao.instance.deleteTask(_task);
+      await _syncNow();
     }
     if (!mounted) return;
     Navigator.pop(context, true);
@@ -727,7 +732,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Future<void> _duplicate() async {
     final isTh = Localizations.localeOf(context).languageCode == 'th';
 
-    // ✅ FIX: constructor ต้องมี userId + sync fields
     final copy = Task.newLocal(
       userId: _uid,
       title: _task.title,
@@ -739,6 +743,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     final newId = await TaskDao.instance.insert(copy);
+    await _syncNow();
 
     final oldId = _task.id;
     if (oldId != null) {
@@ -785,7 +790,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-  // -------- widgets --------
   Widget _pillRight(String text, ColorScheme cs, bool isDark) {
     final base = cs.surface;
     final tint = _tint(base, cs.primary, isDark ? 0.10 : 0.06);
@@ -860,14 +864,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     final border = cs.outlineVariant.withOpacity(isDark ? 0.32 : 0.55);
     final divider = cs.outlineVariant.withOpacity(isDark ? 0.25 : 0.35);
 
-    final remindAt = _task.date.subtract(_remindBefore);
     final isTh = Localizations.localeOf(context).languageCode == 'th';
 
     final catKey = _catKeyOfTask();
     final catLabel = _catLabel(tr, catKey);
 
     return PopScope(
-      canPop: false, // ✅ ดัก back แล้ว save ก่อนออก
+      canPop: false,
       onPopInvoked: (didPop) async {
         if (didPop) return;
         await _popSafely();
@@ -967,7 +970,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 14),
-
                       TextField(
                         controller: _titleCtrl,
                         onSubmitted: (_) => _saveTitleIfChanged(),
@@ -982,9 +984,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
                       InkWell(
                         borderRadius: BorderRadius.circular(16),
                         onTap: _addSubtask,
@@ -1006,7 +1006,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           ),
                         ),
                       ),
-
                       if (_subLoading)
                         const Padding(
                           padding: EdgeInsets.only(top: 6, bottom: 6),
@@ -1018,7 +1017,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                             ),
                           ),
                         ),
-
                       if (!_subLoading && _subtasks.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         ..._subtasks.map(
@@ -1081,11 +1079,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           ),
                         ),
                       ],
-
                       const SizedBox(height: 8),
                       Divider(height: 1, color: divider),
                       const SizedBox(height: 8),
-
                       _rowTile(
                         icon: Icons.calendar_month_rounded,
                         label: isTh ? 'วันที่ครบกำหนด' : 'Due date',
@@ -1093,38 +1089,40 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                         onTap: _pickDueDate,
                       ),
                       Divider(height: 1, color: divider),
-
                       _rowTile(
                         icon: Icons.access_time_rounded,
                         label: isTh ? 'เวลา & แจ้งเตือน' : 'Time & reminder',
                         trailing: _pillRight(_formatTime(_task.date), cs, isDark),
                         onTap: _pickDueTime,
                       ),
-
                       const SizedBox(height: 4),
-
                       Padding(
                         padding: const EdgeInsets.only(left: 40),
                         child: _rowTile(
                           icon: Icons.notifications_active_rounded,
                           label: isTh ? 'เตือนก่อน' : 'Remind before',
-                          trailing: _pillRight(_remindBeforeLabel(tr, _remindBefore), cs, isDark),
+                          trailing: _pillRight(
+                            _remindBeforeLabel(tr, _remindBefore),
+                            cs,
+                            isDark,
+                          ),
                           onTap: _pickRemindBefore,
                         ),
                       ),
-
                       Padding(
                         padding: const EdgeInsets.only(left: 40),
                         child: _rowTile(
                           icon: Icons.tune_rounded,
                           label: isTh ? 'ประเภทการแจ้งเตือน' : 'Reminder type',
-                          trailing: _pillRight(_remindTypeLabel(tr, _remindType), cs, isDark),
+                          trailing: _pillRight(
+                            _remindTypeLabel(tr, _remindType),
+                            cs,
+                            isDark,
+                          ),
                           onTap: _pickRemindType,
                         ),
                       ),
-
                       Divider(height: 1, color: divider),
-
                       _rowTile(
                         icon: Icons.notes_rounded,
                         label: isTh ? 'หมายเหตุ' : 'Note',
@@ -1168,9 +1166,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           }
                         },
                       ),
-
                       const SizedBox(height: 18),
-
                       Container(
                         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                         decoration: BoxDecoration(
@@ -1185,6 +1181,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                 borderRadius: BorderRadius.circular(18),
                                 onTap: () async {
                                   await TaskDao.instance.toggleDone(_task);
+                                  await _syncNow();
                                   if (!mounted) return;
                                   setState(() => _task = _task.copyWith(done: !_task.done));
                                   _changed = true;
@@ -1227,8 +1224,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                               borderRadius: BorderRadius.circular(18),
                               onTap: () async {
                                 await TaskDao.instance.toggleStar(_task);
+                                await _syncNow();
                                 if (!mounted) return;
-                                setState(() => _task = _task.copyWith(starred: !_task.starred));
+                                setState(
+                                  () => _task = _task.copyWith(starred: !_task.starred),
+                                );
                                 _changed = true;
                               },
                               child: Container(
@@ -1252,7 +1252,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 14),
                       Text(
                         isTh

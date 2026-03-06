@@ -19,12 +19,10 @@ class SettingsBasePage extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    // ✅ Gradient background that adapts to theme
     final isDark = _isDark(context);
     final bgTop = isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB);
     final bgBottom = isDark ? const Color(0xFF111827) : const Color(0xFFF1F3F8);
 
-    // ✅ Surfaces
     final cardBg = cs.surface.withOpacity(isDark ? 0.82 : 0.92);
     final topbarBg = cs.surface.withOpacity(isDark ? 0.70 : 0.70);
     final outline = cs.outline.withOpacity(isDark ? 0.22 : 0.16);
@@ -46,7 +44,7 @@ class SettingsBasePage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                 child: _TopBar(
                   title: title,
-                  onBack: () => Navigator.pop(context),
+                  onBack: () => Navigator.maybePop(context),
                   backgroundColor: topbarBg,
                   borderColor: outline,
                 ),
@@ -105,6 +103,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
@@ -118,9 +117,7 @@ class _TopBar extends StatelessWidget {
             border: Border.all(color: borderColor, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(
-                  theme.brightness == Brightness.dark ? 0.35 : 0.06,
-                ),
+                color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
                 blurRadius: 18,
                 offset: const Offset(0, 10),
               ),
@@ -141,19 +138,22 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                    ) ??
-                    TextStyle(
-                      fontSize: 18.5,
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                    ),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ) ??
+                      TextStyle(
+                        fontSize: 18.5,
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                ),
               ),
-              const Spacer(),
             ],
           ),
         ),

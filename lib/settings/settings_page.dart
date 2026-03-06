@@ -4,9 +4,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../db/settings_dao.dart';
 
-// ✅ ใช้ไฟล์ที่ generate อยู่ใน lib/l10n (ตามโปรเจกต์คุณ)
+// ✅ ใช้ไฟล์ที่ generate อยู่ใน lib/l10n
 import '../l10n/app_localizations.dart';
-
 
 import 'account_page.dart';
 import 'theme_page.dart';
@@ -22,15 +21,14 @@ class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
   static const String appLink =
-      'https://play.google.com/store/apps/details?id=com.example.todo';
+      'https://play.google.com/store/apps/details?id=com.todolist.to_dolist';
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // ✅ เก็บ “ค่าจริง” ไว้ แล้วค่อยแปลงเป็นข้อความตามภาษาใน build()
-  String _theme = 'light'; // light/dark/system(legacy)
+  String _theme = 'light'; // light/dark
   String _lang = 'th'; // th/en
   String _dateFmt = 'dd-MM-yyyy';
   int _rem = 10;
@@ -43,15 +41,21 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadSettingSummaries() async {
-    // อ่านจาก SQLite ผ่าน SettingsDao (key-value)
-    final theme = await SettingsDao.instance.getString('theme_mode') ?? 'system';
-    final lang = await SettingsDao.instance.getString('language') ?? 'th';
-    final dateFmt =
-        await SettingsDao.instance.getString('date_format') ?? 'dd-MM-yyyy';
+    final theme =
+        await SettingsDao.instance.getString(SettingsDao.kThemeMode) ?? 'light';
+    final lang =
+        await SettingsDao.instance.getString(SettingsDao.kLanguage) ?? 'th';
+    final dateFmt = await SettingsDao.instance.getString(
+          SettingsDao.kDateFormat,
+        ) ??
+        'dd-MM-yyyy';
     final rem =
-        await SettingsDao.instance.getInt('default_reminder_minutes') ?? 10;
+        await SettingsDao.instance.getInt(SettingsDao.kReminderMinutes) ?? 10;
     final notiEnabled =
-        await SettingsDao.instance.getBool('notifications_enabled') ?? true;
+        await SettingsDao.instance.getBool(
+          SettingsDao.kNotificationsEnabled,
+        ) ??
+        true;
 
     if (!mounted) return;
 
@@ -64,7 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
-  void _go(BuildContext context, Widget page) async {
+  Future<void> _go(BuildContext context, Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     await _loadSettingSummaries();
   }
@@ -74,13 +78,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   String _themeLabel(AppLocalizations t, String v) {
     switch (v) {
-      case 'light':
-        return t.light;
       case 'dark':
         return t.dark;
+      case 'light':
       default:
-        // legacy ค่าเก่า “system”
-        return t.system;
+        return t.light;
     }
   }
 
@@ -112,9 +114,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final cs = theme.colorScheme;
     final isDark = _isDark(context);
 
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
 
-    // ✅ Theme-adaptive gradient (close to your original light look)
     final bgTop = isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB);
     final bgBottom = isDark ? const Color(0xFF111827) : const Color(0xFFF1F3F8);
 
@@ -141,7 +142,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                 child: _TopBar(
                   title: t.settingsTitle,
-                  onBack: () => Navigator.pop(context),
+                  onBack: () => Navigator.maybePop(context),
                 ),
               ),
               Expanded(
@@ -166,7 +167,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: notiText,
                       onTap: () => _go(context, const NotificationPage()),
                     ),
-
                     const SizedBox(height: 14),
                     _SectionTitle(t.sectionDateTime),
                     _SettingRow(
@@ -181,7 +181,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: remText,
                       onTap: () => _go(context, const ReminderDefaultPage()),
                     ),
-
                     const SizedBox(height: 14),
                     _SectionTitle(t.sectionAbout),
                     _SettingRow(
@@ -203,7 +202,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       onTap: () => _go(context, const RateAppPage()),
                     ),
                     _SettingRow(
-                      icon: Icons.g_mobiledata_rounded,
+                      icon: Icons.contact_mail_outlined,
                       title: t.contactUs,
                       onTap: () => _go(context, const ContactPage()),
                     ),
@@ -212,7 +211,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       title: t.feedback,
                       onTap: () => _go(context, const FeedbackPage()),
                     ),
-
                     const SizedBox(height: 18),
                     Center(
                       child: Text(
@@ -239,8 +237,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-/// ===== UI helpers =====
-
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.title, required this.onBack});
 
@@ -256,7 +252,7 @@ class _TopBar extends StatelessWidget {
     final cs = theme.colorScheme;
     final isDark = _isDark(context);
 
-    final bg = cs.surface.withOpacity(isDark ? 0.70 : 0.70);
+    final bg = cs.surface.withOpacity(0.70);
     final border = cs.outline.withOpacity(isDark ? 0.22 : 0.16);
 
     return ClipRRect(
@@ -292,19 +288,22 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                    ) ??
-                    TextStyle(
-                      fontSize: 18.5,
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                    ),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ) ??
+                      TextStyle(
+                        fontSize: 18.5,
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                ),
               ),
-              const Spacer(),
             ],
           ),
         ),
@@ -419,14 +418,14 @@ class _SettingRow extends StatelessWidget {
                               subtitle!,
                               style: theme.textTheme.bodySmall?.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    color: cs.onSurfaceVariant
-                                        .withOpacity(0.90),
+                                    color:
+                                        cs.onSurfaceVariant.withOpacity(0.90),
                                   ) ??
                                   TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
-                                    color: cs.onSurfaceVariant
-                                        .withOpacity(0.90),
+                                    color:
+                                        cs.onSurfaceVariant.withOpacity(0.90),
                                   ),
                             ),
                           ],

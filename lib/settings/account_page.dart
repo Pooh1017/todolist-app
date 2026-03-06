@@ -42,23 +42,16 @@ class AccountPage extends StatelessWidget {
 
     if (ok != true) return;
 
-    // ✅ 1) ออกจาก Firebase
-    await FirebaseAuth.instance.signOut();
-
-    // ✅ 2) ออกจาก GoogleSignIn ด้วย (สำคัญมาก ไม่งั้นมันจำ session เดิม)
-    // - signOut: ออกจากแอป แต่ยังจำบัญชีในเครื่องได้
-    // - disconnect: ตัดสิทธิ์/ล้าง session ลึกกว่า (ทำให้ต้องเลือกบัญชีใหม่บ่อยขึ้น)
     try {
       final gs = GoogleSignIn();
       await gs.signOut();
-      await gs.disconnect(); // ถ้าอยาก “ออกจริงแบบต้องเลือกบัญชีใหม่” แนะนำเปิดไว้
-    } catch (_) {
-      // บางกรณีผู้ใช้ไม่ได้ล็อกอินด้วย Google ก็จะ throw ได้ ปล่อยผ่าน
-    }
+      await gs.disconnect();
+    } catch (_) {}
+
+    await FirebaseAuth.instance.signOut();
 
     if (!context.mounted) return;
 
-    // ✅ 3) กลับไปหน้า Login แบบล้าง route ทั้งหมด
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
       (_) => false,
@@ -135,9 +128,7 @@ class AccountPage extends StatelessWidget {
               ],
             ),
           ),
-
           Divider(height: 1, color: dividerColor),
-
           ListTile(
             leading: Icon(Icons.badge_outlined, color: cs.onSurfaceVariant),
             title: Text(
@@ -155,7 +146,6 @@ class AccountPage extends StatelessWidget {
               ),
             ),
           ),
-
           ListTile(
             leading: Icon(Icons.email_outlined, color: cs.onSurfaceVariant),
             title: Text(
@@ -173,7 +163,6 @@ class AccountPage extends StatelessWidget {
               ),
             ),
           ),
-
           ListTile(
             leading: Icon(Icons.key_outlined, color: cs.onSurfaceVariant),
             title: Text(
@@ -191,7 +180,6 @@ class AccountPage extends StatelessWidget {
               ),
             ),
           ),
-
           ListTile(
             leading: Icon(Icons.login_rounded, color: cs.onSurfaceVariant),
             title: Text(
@@ -209,11 +197,9 @@ class AccountPage extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 10),
           Divider(height: 1, color: dividerColor),
           const SizedBox(height: 12),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: FilledButton.icon(
@@ -230,7 +216,6 @@ class AccountPage extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 6),
         ],
       ),
@@ -249,4 +234,3 @@ class AccountPage extends StatelessWidget {
     return providers.join(', ');
   }
 }
-

@@ -7,10 +7,10 @@ class AppDb {
   AppDb._();
   static final AppDb instance = AppDb._();
 
-  static const _dbName = 'todo_app.db';
+  static const String _dbName = 'todo_app.db';
 
   // ✅ เพิ่มเป็น v7 เพราะเพิ่ม cloud_id + unique index (รองรับหลายเครื่อง)
-  static const _dbVersion = 7;
+  static const int _dbVersion = 7;
 
   Database? _db;
 
@@ -21,19 +21,16 @@ class AppDb {
     final databasesPath = await getDatabasesPath();
     final path = p.join(databasesPath, _dbName);
 
-    // ปิด DB ถ้าเปิดอยู่
     if (_db != null) {
       await _db!.close();
       _db = null;
     }
 
-    // ลบไฟล์ DB เดิม
     final f = File(path);
     if (await f.exists()) {
       await f.delete();
     }
 
-    // เปิดใหม่ → บังคับ onCreate
     await db;
   }
 
@@ -81,6 +78,10 @@ class AppDb {
     await _ensureSubtasksTable(db);
     await _createSettingsTable(db);
 
+    // ✅ กันกรณีฐานเก่าไม่มีตาราง users / privileges
+    await _createUserPrivilegeTables(db);
+    await _seedDefaultPrivileges(db);
+
     if (oldVersion < 7) {
       await _ensureTaskColumn(db, 'cloud_id', "TEXT NOT NULL DEFAULT ''");
       await _ensureTaskIndexes(db);
@@ -99,7 +100,7 @@ class AppDb {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
 
         user_id TEXT NOT NULL,
-        cloud_id TEXT NOT NULL,
+        cloud_id TEXT NOT NULL DEFAULT '',
 
         title TEXT NOT NULL,
         category TEXT NOT NULL,
@@ -130,8 +131,11 @@ class AppDb {
   }
 
   Future<void> _ensureTaskIndexes(Database db) async {
-    await _ensureIndex(db, 'idx_tasks_user',
-        'CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);');
+    await _ensureIndex(
+      db,
+      'idx_tasks_user',
+      'CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);',
+    );
 
     await _ensureIndex(
       db,
@@ -212,8 +216,12 @@ class AppDb {
   }
 
   Future<void> _seedDefaultPrivileges(Database db) async {
-    await db.execute("INSERT OR IGNORE INTO privileges(name) VALUES ('Admin');");
-    await db.execute("INSERT OR IGNORE INTO privileges(name) VALUES ('User');");
+    await db.execute(
+      "INSERT OR IGNORE INTO privileges(name) VALUES ('Admin');",
+    );
+    await db.execute(
+      "INSERT OR IGNORE INTO privileges(name) VALUES ('User');",
+    );
   }
 
   // ============================
@@ -231,7 +239,11 @@ class AppDb {
     await db.execute(sql);
   }
 
-  Future<void> _ensureTaskColumn(Database db, String name, String sqlTypeAndDefault) async {
+  Future<void> _ensureTaskColumn(
+    Database db,
+    String name,
+    String sqlTypeAndDefault,
+  ) async {
     final cols = await db.rawQuery('PRAGMA table_info(tasks)');
     final has = cols.any((r) => (r['name'] ?? '').toString() == name);
     if (has) return;

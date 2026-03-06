@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
 import 'settings/settings_page.dart';
 
 // ✅ l10n
@@ -19,16 +20,11 @@ class SideMenuDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final t = AppLocalizations.of(context);
 
     final bgTop = isDark ? const Color(0xFF0F1720) : _bgTop;
     final bgBottom = isDark ? const Color(0xFF0B121A) : _bgBottom;
-
-    final line = isDark
-        ? Colors.white.withOpacity(0.10)
-        : Colors.black.withOpacity(0.06);
 
     return Drawer(
       backgroundColor: Colors.transparent,
@@ -62,13 +58,11 @@ class SideMenuDrawer extends StatelessWidget {
                   _Header(
                     title: t.drawerAppTitle,
                     subtitle: t.drawerAppSubtitle,
-                    onClose: () => Navigator.pop(context),
                   ),
                   const SizedBox(height: 12),
 
                   _SectionTitle(t.drawerMenuSection),
 
-                  // สิ่งที่ต้องทำ (รวมดาว)
                   _MenuTile(
                     icon: Icons.star_rounded,
                     iconColor: const Color(0xFFE0D51C),
@@ -96,8 +90,6 @@ class SideMenuDrawer extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 10),
-
-                  // Divider(color: line),
                 ],
               ),
             ),
@@ -123,18 +115,14 @@ class SideMenuDrawer extends StatelessWidget {
   }
 }
 
-// ====== Widgets used by SideMenuDrawer ======
-
 class _Header extends StatelessWidget {
   const _Header({
     required this.title,
     required this.subtitle,
-    required this.onClose,
   });
 
   final String title;
   final String subtitle;
-  final VoidCallback onClose;
 
   static const _blue = Color(0xFF2E5E8D);
 
@@ -145,9 +133,6 @@ class _Header extends StatelessWidget {
 
     final ink = scheme.onSurface;
     final muted = scheme.onSurface.withOpacity(isDark ? 0.70 : 0.60);
-    final line = isDark
-        ? Colors.white.withOpacity(0.10)
-        : Colors.black.withOpacity(0.06);
 
     return _GlassCard(
       child: Row(
@@ -161,8 +146,11 @@ class _Header extends StatelessWidget {
               border:
                   Border.all(color: _blue.withOpacity(isDark ? 0.28 : 0.22)),
             ),
-            child: Icon(Icons.checklist_rounded,
-                color: _blue.withOpacity(0.95), size: 26),
+            child: Icon(
+              Icons.checklist_rounded,
+              color: _blue.withOpacity(0.95),
+              size: 26,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -187,20 +175,6 @@ class _Header extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-          InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: onClose,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: scheme.surface.withOpacity(isDark ? 0.75 : 0.70),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: line, width: 1.0),
-              ),
-              child: Icon(Icons.close_rounded, color: muted),
             ),
           ),
         ],
@@ -247,7 +221,6 @@ class _MenuTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-
   final bool showChevron;
   final Color? iconColor;
 
@@ -267,7 +240,7 @@ class _MenuTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(
             children: [
-              Icon(icon, color: (iconColor ?? ink.withOpacity(0.85))),
+              Icon(icon, color: iconColor ?? ink.withOpacity(0.85)),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -346,8 +319,9 @@ class _SubTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: accent.withOpacity(isDark ? 0.18 : 0.14),
                     borderRadius: BorderRadius.circular(16),
-                    border:
-                        Border.all(color: accent.withOpacity(isDark ? 0.32 : 0.25)),
+                    border: Border.all(
+                      color: accent.withOpacity(isDark ? 0.32 : 0.25),
+                    ),
                   ),
                   child: Icon(icon, color: accent.withOpacity(0.95), size: 22),
                 ),
@@ -392,7 +366,6 @@ class _SubTile extends StatelessWidget {
   }
 }
 
-/// ✅ ExpansionTile ที่ลูกศรเริ่มชี้ไปขวา และตอนเปิดชี้ลง
 class _CategoryExpansion extends StatefulWidget {
   const _CategoryExpansion({required this.onTapKey});
   final void Function(String key) onTapKey;
@@ -404,11 +377,10 @@ class _CategoryExpansion extends StatefulWidget {
 class _CategoryExpansionState extends State<_CategoryExpansion> {
   bool _expanded = false;
 
-  // สีเหมือนหน้า Home
-  static const _blue = Color(0xFF2E5E8D); // ที่วางแผนไว้
-  static const _green = Color(0xFF24C96A); // งาน
-  static const _yellow = Color(0xFFE0D51C); // สิ่งที่ต้องทำ
-  static const _orange = Color(0xFFF08C63); // ใกล้ครบกำหนด
+  static const _blue = Color(0xFF2E5E8D);
+  static const _green = Color(0xFF24C96A);
+  static const _yellow = Color(0xFFE0D51C);
+  static const _orange = Color(0xFFF08C63);
 
   @override
   Widget build(BuildContext context) {

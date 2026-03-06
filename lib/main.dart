@@ -16,7 +16,6 @@ import 'db/settings_dao.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ โหลด date symbols ทุก locale ที่ใช้ (ปลอดภัยสุด)
   await initializeDateFormatting();
 
   await Firebase.initializeApp(
@@ -57,7 +56,6 @@ class AppSettings extends ChangeNotifier {
   int get reminderMinutes => _reminderMinutes;
   bool get notificationsEnabled => _notificationsEnabled;
 
-  /// โหลดค่า settings จาก SQLite (เรียกใน main() ก่อน runApp)
   Future<void> loadFromDb() async {
     final dao = SettingsDao.instance;
 
@@ -67,10 +65,8 @@ class AppSettings extends ChangeNotifier {
     final mins = await dao.getInt(SettingsDao.kReminderMinutes);
     final noti = await dao.getBool(SettingsDao.kNotificationsEnabled);
 
-    // ✅ theme: รองรับค่าเก่า system -> light
     _themePref = (theme == 'dark') ? 'dark' : 'light';
 
-    // ✅ language
     if (lang == 'en') _locale = const Locale('en', 'US');
     if (lang == 'th') _locale = const Locale('th', 'TH');
 
@@ -86,7 +82,6 @@ class AppSettings extends ChangeNotifier {
 
     _locale = l;
 
-    // ✅ กัน DateFormat บางหน้าเรียกก่อน symbols พร้อม
     final tag = '${l.languageCode}_${l.countryCode ?? ''}';
     await initializeDateFormatting(tag, null);
 
@@ -131,7 +126,10 @@ class AppSettings extends ChangeNotifier {
   Future<void> setNotificationsEnabled(bool enabled) async {
     _notificationsEnabled = enabled;
     notifyListeners();
-    await SettingsDao.instance.setBool(SettingsDao.kNotificationsEnabled, enabled);
+    await SettingsDao.instance.setBool(
+      SettingsDao.kNotificationsEnabled,
+      enabled,
+    );
   }
 }
 
@@ -178,13 +176,13 @@ class MyApp extends StatelessWidget {
   }
 
   ThemeData _darkTheme() {
-    final bg = const Color(0xFF0B1220);
-    final surface = const Color(0xFF121B2D);
-    final surface2 = const Color(0xFF18243A);
-    final outline = const Color(0x26FFFFFF);
-    final onBg = const Color(0xFFE8EEF8);
-    final muted = const Color(0xFF9BB0CC);
-    final primary = const Color(0xFF6FB5FF);
+    const bg = Color(0xFF0B1220);
+    const surface = Color(0xFF121B2D);
+    const surface2 = Color(0xFF18243A);
+    const outline = Color(0x26FFFFFF);
+    const onBg = Color(0xFFE8EEF8);
+    const muted = Color(0xFF9BB0CC);
+    const primary = Color(0xFF6FB5FF);
 
     final base = ThemeData.dark();
 
@@ -200,19 +198,16 @@ class MyApp extends StatelessWidget {
     return base.copyWith(
       colorScheme: scheme,
       scaffoldBackgroundColor: bg,
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: bg,
         elevation: 0,
         foregroundColor: onBg,
         centerTitle: false,
       ),
-
-      // ✅ FIX: ห้าม const เพราะใช้ตัวแปร outline
-      dividerTheme: DividerThemeData(
+      dividerTheme: const DividerThemeData(
         color: outline,
         thickness: 1,
       ),
-
       listTileTheme: ListTileThemeData(
         textColor: onBg,
         iconColor: primary,
@@ -221,12 +216,11 @@ class MyApp extends StatelessWidget {
         ),
         tileColor: surface2,
       ),
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface2,
-        hintStyle: TextStyle(color: muted),
-        labelStyle: TextStyle(color: muted),
+        hintStyle: const TextStyle(color: muted),
+        labelStyle: const TextStyle(color: muted),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -237,17 +231,15 @@ class MyApp extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: primary, width: 1.2),
+          borderSide: const BorderSide(color: primary, width: 1.2),
         ),
       ),
-
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primary;
           return muted;
         }),
       ),
-
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primary;
@@ -260,29 +252,21 @@ class MyApp extends StatelessWidget {
           return const Color(0xFF2A364A);
         }),
       ),
-
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return primary;
           return surface2;
         }),
-
-        // ✅ FIX: ไม่ต้องซ้อน const
         checkColor: const WidgetStatePropertyAll(Color(0xFF06101F)),
-
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
         ),
-
-        // ✅ FIX: ห้าม const เพราะใช้ตัวแปร outline
-        side: BorderSide(color: outline),
+        side: const BorderSide(color: outline),
       ),
-
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
       ),
-
-      textTheme: TextTheme(
+      textTheme: const TextTheme(
         bodyMedium: TextStyle(color: onBg),
         bodySmall: TextStyle(color: muted),
         titleMedium: TextStyle(color: onBg, fontWeight: FontWeight.w600),
@@ -297,11 +281,7 @@ class MyApp extends StatelessWidget {
       builder: (_, __) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-
-          // ✅ locale เปลี่ยนแล้วทั้งแอพ rebuild
           locale: settings.locale,
-
-          // ✅ gen-l10n + delegates (แบบชัวร์)
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -309,19 +289,13 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-
-          // ✅ สำคัญ: ให้ settings ชนะเสมอ (ไม่โดนภาษาเครื่อง override)
           localeResolutionCallback: (_, __) => settings.locale,
-
           theme: _lightTheme(),
           darkTheme: _darkTheme(),
           themeMode: settings.themeMode,
-
-          // ✅ ไม่ใช้ const เพื่อให้ locale/theme rebuild แน่นอน
-          home: SplashPage(),
-
+          home: const SplashPage(),
           routes: {
-            '/login': (_) => LoginPage(),
+            '/login': (_) => const LoginPage(),
           },
         );
       },

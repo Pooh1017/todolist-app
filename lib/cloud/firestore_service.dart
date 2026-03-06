@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
 
 class FirestoreService {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // ---------- helpers safe cast ----------
   int _asInt(dynamic v, {int fallback = 0}) {
@@ -32,19 +32,18 @@ class FirestoreService {
     return v.toString();
   }
 
+  CollectionReference<Map<String, dynamic>> _tasksRef(String uid) {
+    return _db.collection('users').doc(uid).collection('tasks');
+  }
+
   // ============================
-  // ✅ upsert (merge) งานขึ้น cloud (รองรับหลายเครื่อง)
+  // ✅ upsert งานขึ้น cloud
   // ============================
   Future<void> upsertTask(String uid, Task t) async {
     final cloudId = t.cloudId.trim();
     if (cloudId.isEmpty) return;
 
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('tasks')
-        .doc(cloudId)
-        .set(
+    await _tasksRef(uid).doc(cloudId).set(
       {
         'cloudId': cloudId,
         'localId': t.id, // debug only
@@ -60,25 +59,40 @@ class FirestoreService {
 
         'userId': uid,
       },
-      SetOptions(merge: true), // ✅ ถูกต้อง
+      SetOptions(merge: true),
     );
   }
 
+  // ============================
+  // ✅ ดึงงานจาก cloud
+  // ============================
   Future<List<Map<String, dynamic>>> fetchTasks(
     String uid, {
     bool includeDeleted = true,
   }) async {
-    Query<Map<String, dynamic>> q =
-        _db.collection('users').doc(uid).collection('tasks');
+    Query<Map<String, dynamic>> q = _tasksRef(uid);
 
     if (!includeDeleted) {
       q = q.where('deleted', isEqualTo: false);
     }
 
+    q = q.orderBy('updatedAt', descending: true);
+
     final snap = await q.get();
-    return snap.docs.map((d) => d.data()).toList();
+
+    return snap.docs.map((d) {
+      final data = d.data();
+
+      // ✅ กันกรณีข้อมูลเก่าไม่มี cloudId ใน field
+      data['cloudId'] = _asString(data['cloudId'], fallback: d.id).trim();
+
+      return data;
+    }).toList();
   }
 
+  // ============================
+  // ✅ แปลงข้อมูล cloud -> Task
+  // ============================
   Task taskFromCloud(String uid, Map<String, dynamic> m) {
     final dateMs = _asInt(
       m['dateMs'],
@@ -101,6 +115,24 @@ class FirestoreService {
       updatedAt: updatedAt,
       deleted: _asBool(m['deleted'], fallback: false),
       syncState: 0,
+    );
+  }
+
+  // ============================
+  // ✅ ลบงานบน cloud แบบ soft delete
+  // ============================
+  Future<void> softDeleteTask(String uid, Task t) async {
+    final cloudId = t.cloudId.trim();
+    if (cloudId.isEmpty) return;
+
+    await _tasksRef(uid).doc(cloudId).set(
+      {
+        'cloudId': cloudId,
+        'deleted': true,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        'userId': uid,
+      },
+      SetOptions(merge: true),
     );
   }
 }

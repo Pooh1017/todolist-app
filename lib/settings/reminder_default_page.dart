@@ -19,10 +19,7 @@ class _ReminderDefaultPageState extends State<ReminderDefaultPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final settings = AppSettingsScope.of(context);
-    final v = settings.reminderMinutes;
-    if (minutes != v) {
-      setState(() => minutes = v);
-    }
+    minutes = settings.reminderMinutes;
   }
 
   Future<void> _setMinutes(int value) async {
@@ -35,7 +32,7 @@ class _ReminderDefaultPageState extends State<ReminderDefaultPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return SettingsBasePage(
       title: t.defaultReminder,
@@ -61,13 +58,15 @@ class _ReminderDefaultPageState extends State<ReminderDefaultPage> {
                 iconEnabledColor: cs.primary,
                 items: <int>[5, 10, 30, 60]
                     .map(
-                      (m) => DropdownMenuItem(
+                      (m) => DropdownMenuItem<int>(
                         value: m,
                         child: Text(t.minutes(m)),
                       ),
                     )
                     .toList(),
-                onChanged: (v) => _setMinutes(v ?? minutes),
+                onChanged: (v) {
+                  if (v != null) _setMinutes(v);
+                },
               ),
             ),
           ),

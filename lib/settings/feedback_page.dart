@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'settings_base_page.dart';
 
 // ✅ l10n (generated in lib/l10n)
@@ -13,11 +14,57 @@ class FeedbackPage extends StatefulWidget {
 
 class _FeedbackPageState extends State<FeedbackPage> {
   final ctrl = TextEditingController();
+  bool _sending = false;
+
+  static const String _toEmail = 'thanapooh@gmail.com';
 
   @override
   void dispose() {
     ctrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _sendFeedback() async {
+    final t = AppLocalizations.of(context);
+    final text = ctrl.text.trim();
+    if (text.isEmpty || _sending) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _sending = true);
+
+    try {
+      final subject = Uri.encodeComponent('Feedback from To-Do List App');
+      final body = Uri.encodeComponent(text);
+
+      final uri = Uri.parse(
+        'mailto:$_toEmail?subject=$subject&body=$body',
+      );
+
+      final ok = await launchUrl(uri);
+
+      if (!mounted) return;
+
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('เปิดอีเมลเพื่อส่งข้อความไปที่ $_toEmail แล้ว'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ctrl.clear();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ไม่สามารถเปิดแอปอีเมลได้'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
   }
 
   @override
@@ -26,7 +73,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
     final cs = theme.colorScheme;
     final t = AppLocalizations.of(context);
 
-    final fill = cs.surfaceVariant
+    final fill = cs.surfaceContainerHighest
         .withOpacity(theme.brightness == Brightness.dark ? 0.55 : 0.75);
     final outline = cs.outlineVariant.withOpacity(0.55);
 
@@ -71,20 +118,14 @@ class _FeedbackPageState extends State<FeedbackPage> {
           SizedBox(
             height: 46,
             child: ElevatedButton(
-              onPressed: () {
-                final text = ctrl.text.trim();
-                if (text.isEmpty) return;
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(t.feedbackSentExample),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: cs.inverseSurface,
-                  ),
-                );
-                ctrl.clear();
-              },
-              child: Text(t.send),
+              onPressed: _sending ? null : _sendFeedback,
+              child: _sending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(t.send),
             ),
           ),
         ],

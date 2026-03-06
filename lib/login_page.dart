@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'home_page.dart';
 import 'db/app_db.dart';
+import 'sync/sync_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,9 +16,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _auth = FirebaseAuth.instance;
-
-  // ✅ เก็บ instance ไว้ ไม่สร้างใหม่ทุกครั้ง
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   bool _loading = false;
@@ -55,7 +54,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _ensureUserLoginColumn(Database db) async {
-    // กันเคสตาราง users ยังไม่มี (ไม่ให้ PRAGMA แล้วพัง)
     if (!await _tableExists(db, 'users')) return;
 
     final cols = await db.rawQuery("PRAGMA table_info(users)");
@@ -65,7 +63,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // ✅ seed privileges ถ้ายังไม่มี (และต้องมีตาราง privileges ก่อน)
   Future<void> _ensurePrivilegesSeed(Database db) async {
     if (!await _tableExists(db, 'privileges')) return;
 
@@ -73,7 +70,6 @@ class _LoginPageState extends State<LoginPage> {
     await db.execute("INSERT OR IGNORE INTO privileges(name) VALUES ('User');");
   }
 
-  // ✅ หา privilege_id จากชื่อ role (ไม่เดาเป็น 1)
   Future<int> _getPrivilegeId(Database db, String roleName) async {
     if (!await _tableExists(db, 'privileges')) {
       throw Exception("ไม่พบตาราง privileges ใน SQLite");
@@ -86,6 +82,7 @@ class _LoginPageState extends State<LoginPage> {
       whereArgs: [roleName],
       limit: 1,
     );
+
     if (rows.isEmpty) {
       throw Exception("ไม่พบ privilege '$roleName' ในตาราง privileges");
     }
@@ -96,11 +93,9 @@ class _LoginPageState extends State<LoginPage> {
     return int.tryParse(v.toString()) ?? 0;
   }
 
-  // ✅ บันทึกผู้ใช้ + เวลา login ล่าสุดลง SQLite (แบบชัวร์)
   Future<void> _saveLoginToLocal(User u) async {
     final db = await AppDb.instance.db;
 
-    // ทำให้แน่ใจว่า schema พร้อม (กัน crash ถ้า table ยังไม่พร้อม)
     await _ensureUserLoginColumn(db);
     await _ensurePrivilegesSeed(db);
 
@@ -109,7 +104,6 @@ class _LoginPageState extends State<LoginPage> {
       throw Exception('Firebase user ไม่มี email (บันทึกลง users ไม่ได้)');
     }
 
-    // กันเคสตาราง users/app_settings ไม่มี
     if (!await _tableExists(db, 'users')) {
       throw Exception("ไม่พบตาราง users ใน SQLite");
     }
@@ -138,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
         'display_name': displayName.isNotEmpty ? displayName : 'User',
         'email': email,
         'privilege_id': userPrivilegeId,
-        'created_at_ms': now, // ✅ เพิ่มอันนี้ (NOT NULL)
+        'created_at_ms': now,
         'last_login_ms': now,
       });
       debugPrint('INSERT users OK: $email');
@@ -167,11 +161,10 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _signInWithGoogle() async {
     await _withLoading(() async {
-      // ✅ บังคับให้เลือก account ใหม่ได้ (กันติด account เดิม)
       await _googleSignIn.signOut();
 
       final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return; // ผู้ใช้กดยกเลิก
+      if (googleUser == null) return;
 
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -186,7 +179,8 @@ class _LoginPageState extends State<LoginPage> {
 
       if (user != null) {
         await _saveLoginToLocal(user);
-        debugPrint('SAVE LOGIN TO LOCAL OK');
+        await SyncService.instance.syncNow();
+        debugPrint('SAVE LOGIN + SYNC OK');
       }
 
       _toast('เข้าสู่ระบบสำเร็จ: ${user?.email ?? ''}');
@@ -239,7 +233,8 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.white.withOpacity(0.86),
                           borderRadius: BorderRadius.circular(36),
                           border: Border.all(
-                              color: Colors.white.withOpacity(0.55)),
+                            color: Colors.white.withOpacity(0.55),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.10),

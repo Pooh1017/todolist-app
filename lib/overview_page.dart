@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'db/task_dao.dart';
 import 'models/task.dart';
+import 'sync/sync_service.dart';
 
 // ✅ ใช้ตัวเดียวทั้งแอพ
 import 'utils/date_fmt.dart';
@@ -20,7 +21,6 @@ class OverviewPage extends StatefulWidget {
 }
 
 class OverviewPageState extends State<OverviewPage> {
-  // accent
   static const _blue = Color(0xFF2E5E8D);
   static const _green = Color(0xFF24C96A);
   static const _red = Color(0xFFE05A5A);
@@ -28,39 +28,34 @@ class OverviewPageState extends State<OverviewPage> {
 
   bool _loading = true;
 
-  // counts
   int _doneCount = 0;
   int _overdueCount = 0;
   int _inProgressCount = 0;
   int _nearDueCount = 0;
 
-  // 30 days
   List<Task> _next30Days = [];
   int _count30 = 0;
 
-  Future<void> refresh() async => _reload();
+  Future<void> refresh() async => _reloadAfterSync();
 
   @override
   void initState() {
     super.initState();
-    _reload();
+    _reloadAfterSync();
   }
 
-  // ============================
-  // ✅ Category key system (รองรับข้อมูลเก่าเป็นภาษาไทยด้วย)
-  // ============================
   static const String _kWork = 'work';
   static const String _kTodoAll = 'todo_all';
   static const String _kPlan = 'plan';
   static const String _kNearDue = 'near_due';
 
   String _catKeyOf(Task t) {
-    final c = (t.category).trim();
+    final c = t.category.trim();
 
-    // ข้อมูลใหม่ (key)
-    if (c == _kWork || c == _kTodoAll || c == _kPlan || c == _kNearDue) return c;
+    if (c == _kWork || c == _kTodoAll || c == _kPlan || c == _kNearDue) {
+      return c;
+    }
 
-    // ข้อมูลเก่า (ไทย)
     if (c == 'งาน') return _kWork;
     if (c == 'สิ่งที่ต้องทำ') return _kTodoAll;
     if (c == 'ที่วางแผนไว้') return _kPlan;
@@ -77,13 +72,12 @@ class OverviewPageState extends State<OverviewPage> {
       case _kWork:
         return tr.drawerCatWork;
       case _kTodoAll:
-        return tr.drawerCatTodo; // ✅ แก้จาก drawerTodo
+        return tr.drawerCatTodo;
       case _kPlan:
         return tr.drawerCatPlan;
       case _kNearDue:
         return tr.drawerCatImportant;
       default:
-        // เผื่อเจอไทยเก่า
         if (key == 'งาน') return tr.drawerCatWork;
         if (key == 'สิ่งที่ต้องทำ') return tr.drawerCatTodo;
         if (key == 'ที่วางแผนไว้') return tr.drawerCatPlan;
@@ -92,7 +86,6 @@ class OverviewPageState extends State<OverviewPage> {
     }
   }
 
-  // ============================
   bool _isDone(Task t) => t.done;
   bool _isOverdue(Task t, DateTime now) => !t.done && t.date.isBefore(now);
 
@@ -109,18 +102,16 @@ class OverviewPageState extends State<OverviewPage> {
     return true;
   }
 
-  // ✅ งาน “ภายใน 30 วัน” (ไม่รวมย้อนหลัง)
   List<Task> _pickWithin30(List<Task> all) {
     final now = DateTime.now();
     final end = now.add(const Duration(days: 30));
 
     final list = all.where((t) {
       if (t.done) return false;
-      if (t.date.isBefore(now)) return false; // ✅ ไม่รวมย้อนหลัง
+      if (t.date.isBefore(now)) return false;
       return !t.date.isAfter(end);
     }).toList();
 
-    // star -> time
     list.sort((a, b) {
       final s = (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
       if (s != 0) return s;
@@ -128,6 +119,14 @@ class OverviewPageState extends State<OverviewPage> {
     });
 
     return list;
+  }
+
+  Future<void> _reloadAfterSync() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid?.trim() ?? '';
+    if (uid.isNotEmpty) {
+      await SyncService.instance.syncNow();
+    }
+    await _reload();
   }
 
   Future<void> _reload() async {
@@ -170,7 +169,6 @@ class OverviewPageState extends State<OverviewPage> {
 
     final total = _doneCount + _overdueCount + _inProgressCount + _nearDueCount;
 
-    // background (โทนเดียวกับหน้าอื่น)
     final bgTop = isDark ? const Color(0xFF0F1720) : const Color(0xFFF6F7FB);
     final bgBottom = isDark ? const Color(0xFF0B121A) : const Color(0xFFF1F3F8);
 
@@ -191,7 +189,6 @@ class OverviewPageState extends State<OverviewPage> {
               children: [
                 _GlassProfileHeader(user: user),
                 const SizedBox(height: 14),
-
                 Row(
                   children: [
                     Text(
@@ -212,7 +209,6 @@ class OverviewPageState extends State<OverviewPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
-
                 _GlassBox(
                   child: Row(
                     children: [
@@ -238,9 +234,7 @@ class OverviewPageState extends State<OverviewPage> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 Text(
                   tr.overviewPieTitle,
                   style: TextStyle(
@@ -250,7 +244,6 @@ class OverviewPageState extends State<OverviewPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-
                 _GlassBox(
                   child: _loading
                       ? const SizedBox(
@@ -264,8 +257,8 @@ class OverviewPageState extends State<OverviewPage> {
                                 child: Text(
                                   tr.overviewEmptyAll,
                                   style: TextStyle(
-                                    color: scheme.onSurface.withOpacity(
-                                        isDark ? 0.70 : 0.60),
+                                    color: scheme.onSurface
+                                        .withOpacity(isDark ? 0.70 : 0.60),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -278,9 +271,9 @@ class OverviewPageState extends State<OverviewPage> {
                                   height: 160,
                                   child: _PieChart(
                                     strokeWidth: 22,
-                                    baseColor: (isDark
+                                    baseColor: isDark
                                         ? Colors.white.withOpacity(0.10)
-                                        : Colors.black.withOpacity(0.06)),
+                                        : Colors.black.withOpacity(0.06),
                                     segments: [
                                       _PieSegment(
                                         value: _doneCount.toDouble(),
@@ -310,30 +303,32 @@ class OverviewPageState extends State<OverviewPage> {
                                   child: _Legend(
                                     items: [
                                       _LegendItem(
-                                          color: _green,
-                                          title: tr.statusDone,
-                                          value: _doneCount),
+                                        color: _green,
+                                        title: tr.statusDone,
+                                        value: _doneCount,
+                                      ),
                                       _LegendItem(
-                                          color: _red,
-                                          title: tr.statusOverdue,
-                                          value: _overdueCount),
+                                        color: _red,
+                                        title: tr.statusOverdue,
+                                        value: _overdueCount,
+                                      ),
                                       _LegendItem(
-                                          color: _blue,
-                                          title: tr.statusInProgress,
-                                          value: _inProgressCount),
+                                        color: _blue,
+                                        title: tr.statusInProgress,
+                                        value: _inProgressCount,
+                                      ),
                                       _LegendItem(
-                                          color: _yellow,
-                                          title: tr.statusNearDue,
-                                          value: _nearDueCount),
+                                        color: _yellow,
+                                        title: tr.statusNearDue,
+                                        value: _nearDueCount,
+                                      ),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
                 ),
-
                 const SizedBox(height: 16),
-
                 Row(
                   children: [
                     Expanded(
@@ -355,7 +350,6 @@ class OverviewPageState extends State<OverviewPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
-
                 Expanded(
                   child: _GlassBox(
                     child: _loading
@@ -365,8 +359,8 @@ class OverviewPageState extends State<OverviewPage> {
                                 child: Text(
                                   tr.overviewNext30Empty,
                                   style: TextStyle(
-                                    color: scheme.onSurface.withOpacity(
-                                        isDark ? 0.70 : 0.60),
+                                    color: scheme.onSurface
+                                        .withOpacity(isDark ? 0.70 : 0.60),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -387,9 +381,6 @@ class OverviewPageState extends State<OverviewPage> {
   }
 }
 
-// ==========================
-// Legend
-// ==========================
 class _Legend extends StatelessWidget {
   const _Legend({required this.items});
   final List<_LegendItem> items;
@@ -444,13 +435,13 @@ class _LegendItem {
   final Color color;
   final String title;
   final int value;
-  const _LegendItem(
-      {required this.color, required this.title, required this.value});
+  const _LegendItem({
+    required this.color,
+    required this.title,
+    required this.value,
+  });
 }
 
-// ==========================
-// Pie Chart (CustomPainter)
-// ==========================
 class _PieChart extends StatelessWidget {
   const _PieChart({
     required this.segments,
@@ -464,7 +455,6 @@ class _PieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ บังคับ size เพื่อให้ CustomPaint วาดแน่นอน
     return SizedBox.expand(
       child: CustomPaint(
         painter: _PiePainter(
@@ -481,15 +471,19 @@ class _PieSegment {
   final double value;
   final Color color;
   final String label;
-  const _PieSegment(
-      {required this.value, required this.color, required this.label});
+  const _PieSegment({
+    required this.value,
+    required this.color,
+    required this.label,
+  });
 }
 
 class _PiePainter extends CustomPainter {
-  _PiePainter(
-      {required this.segments,
-      required this.strokeWidth,
-      required this.baseColor});
+  _PiePainter({
+    required this.segments,
+    required this.strokeWidth,
+    required this.baseColor,
+  });
 
   final List<_PieSegment> segments;
   final double strokeWidth;
@@ -497,8 +491,8 @@ class _PiePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final total = segments.fold<double>(
-        0, (s, e) => s + (e.value <= 0 ? 0 : e.value));
+    final total =
+        segments.fold<double>(0, (s, e) => s + (e.value <= 0 ? 0 : e.value));
 
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - strokeWidth / 2;
@@ -548,9 +542,6 @@ class _PiePainter extends CustomPainter {
   }
 }
 
-// ==========================
-// Glass Profile
-// ==========================
 class _GlassProfileHeader extends StatelessWidget {
   const _GlassProfileHeader({required this.user});
   final User? user;
@@ -594,18 +585,22 @@ class _GlassProfileHeader extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: scheme.primary.withOpacity(0.55), width: 2),
+                    color: scheme.primary.withOpacity(0.55),
+                    width: 2,
+                  ),
                 ),
                 child: CircleAvatar(
                   backgroundColor:
                       scheme.primary.withOpacity(isDark ? 0.12 : 0.10),
-                  backgroundImage:
-                      (photoUrl != null && photoUrl.isNotEmpty)
-                          ? NetworkImage(photoUrl)
-                          : null,
+                  backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                      ? NetworkImage(photoUrl)
+                      : null,
                   child: (photoUrl == null || photoUrl.isEmpty)
-                      ? Icon(Icons.person_rounded,
-                          color: scheme.onSurface.withOpacity(0.65), size: 30)
+                      ? Icon(
+                          Icons.person_rounded,
+                          color: scheme.onSurface.withOpacity(0.65),
+                          size: 30,
+                        )
                       : null,
                 ),
               ),
@@ -630,8 +625,9 @@ class _GlassProfileHeader extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color:
-                            scheme.onSurface.withOpacity(isDark ? 0.70 : 0.60),
+                        color: scheme.onSurface.withOpacity(
+                          isDark ? 0.70 : 0.60,
+                        ),
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
@@ -647,9 +643,6 @@ class _GlassProfileHeader extends StatelessWidget {
   }
 }
 
-// ==========================
-// Glass Box Wrapper
-// ==========================
 class _GlassBox extends StatelessWidget {
   const _GlassBox({required this.child, this.padding});
   final Widget child;
@@ -690,9 +683,6 @@ class _GlassBox extends StatelessWidget {
   }
 }
 
-// ==========================
-// Summary Card
-// ==========================
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.title,
@@ -766,9 +756,6 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-// ==========================
-// Mini List (30 วัน)
-// ==========================
 class _MiniList extends StatelessWidget {
   const _MiniList({required this.tasks, required this.categoryText});
 
@@ -788,8 +775,9 @@ class _MiniList extends StatelessWidget {
       shrinkWrap: true,
       separatorBuilder: (_, __) => Divider(
         height: 1,
-        color:
-            isDark ? Colors.white.withOpacity(0.10) : Colors.black.withOpacity(0.06),
+        color: isDark
+            ? Colors.white.withOpacity(0.10)
+            : Colors.black.withOpacity(0.06),
       ),
       itemBuilder: (_, i) {
         final t = tasks[i];
@@ -817,7 +805,10 @@ class _MiniList extends StatelessWidget {
                 : scheme.onSurface.withOpacity(isDark ? 0.70 : 0.60);
 
         return Container(
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(12),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
           child: Row(
             children: [
@@ -847,7 +838,9 @@ class _MiniList extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: scheme.onSurface.withOpacity(isDark ? 0.70 : 0.60),
+                        color: scheme.onSurface.withOpacity(
+                          isDark ? 0.70 : 0.60,
+                        ),
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                       ),
@@ -858,7 +851,11 @@ class _MiniList extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 formatDate(context, t.date, withTime: true),
-                style: TextStyle(color: timeColor, fontWeight: FontWeight.w800, fontSize: 12),
+                style: TextStyle(
+                  color: timeColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(width: 6),
               if (t.starred)
@@ -875,11 +872,13 @@ class _MiniList extends StatelessWidget {
   }
 }
 
-// ==========================
-// Count Box
-// ==========================
 class _CountBox extends StatelessWidget {
-  const _CountBox({required this.value, required this.accent, required this.label});
+  const _CountBox({
+    required this.value,
+    required this.accent,
+    required this.label,
+  });
+
   final int value;
   final Color accent;
   final String label;

@@ -6,11 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:uuid/uuid.dart'; // ✅ เพิ่ม
+import 'package:uuid/uuid.dart';
 
 import 'db/task_dao.dart';
 import 'models/task.dart';
 import 'task_detail_page.dart';
+import 'sync/sync_service.dart';
 
 // ✅ l10n (generated)
 import 'l10n/app_localizations.dart';
@@ -27,20 +28,17 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage>
     with WidgetsBindingObserver {
-  // ✅ โทนเดียวกับหน้า Home
   static const _bgTopLight = Color(0xFFF6F7FB);
   static const _bgBottomLight = Color(0xFFF1F3F8);
 
-  // ✅ โทนสีเดียวกับ Home
   static const _blue = Color(0xFF2E5E8D);
   static const _green = Color(0xFF24C96A);
   static const _yellow = Color(0xFFE0D51C);
   static const _orange = Color(0xFFF08C63);
 
-  // ✅ uuid generator
-  static const Uuid _uuid = Uuid();
+  static final Uuid _uuid = Uuid();
 
-  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid?.trim();
 
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
@@ -56,22 +54,18 @@ class _CalendarPageState extends State<CalendarPage>
   Color _tint(Color base, Color accent, double amount) =>
       Color.lerp(base, accent, amount) ?? base;
 
-  // ============================
-  // ✅ Category key system (เหมือน Home)
-  // ============================
   static const String _kWork = 'work';
   static const String _kTodoAll = 'todo_all';
   static const String _kPlan = 'plan';
   static const String _kNearDue = 'near_due';
 
-  // ✅ รองรับข้อมูลเก่า (ภาษาไทย)
   String _catKeyOf(String raw) {
     final c = raw.trim();
 
-    // คีย์ใหม่
-    if (c == _kWork || c == _kTodoAll || c == _kPlan || c == _kNearDue) return c;
+    if (c == _kWork || c == _kTodoAll || c == _kPlan || c == _kNearDue) {
+      return c;
+    }
 
-    // ข้อมูลเก่า (ไทย)
     if (c == 'งาน') return _kWork;
     if (c == 'สิ่งที่ต้องทำ') return _kTodoAll;
     if (c == 'ที่วางแผนไว้') return _kPlan;
@@ -110,14 +104,15 @@ class _CalendarPageState extends State<CalendarPage>
     }
   }
 
-  // ✅ ให้ HomePage เรียกได้ตอนกดแท็บ (IndexedStack จะไม่ rebuild)
-  Future<void> refresh() async => _reload();
+  Future<void> refresh() async => _reloadAfterSync();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _reload();
+    _selectedDay = _dayKey(DateTime.now());
+    _focusedDay = _selectedDay;
+    _reloadAfterSync();
   }
 
   @override
@@ -126,15 +121,15 @@ class _CalendarPageState extends State<CalendarPage>
     if (!_didAutoRefreshOnce) {
       _didAutoRefreshOnce = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _reload();
+        if (mounted) _reloadAfterSync();
       });
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (mounted) _reload();
+    if (state == AppLifecycleState.resumed && mounted) {
+      _reloadAfterSync();
     }
   }
 
@@ -144,11 +139,19 @@ class _CalendarPageState extends State<CalendarPage>
     super.dispose();
   }
 
+  Future<void> _reloadAfterSync() async {
+    final uid = _uid;
+    if (uid != null && uid.isNotEmpty) {
+      await SyncService.instance.syncNow();
+    }
+    await _reload();
+  }
+
   Future<void> _reload() async {
     if (!mounted) return;
 
     final uid = _uid;
-    if (uid == null) {
+    if (uid == null || uid.isEmpty) {
       setState(() {
         _byDay.clear();
         _selectedTasks = [];
@@ -194,7 +197,9 @@ class _CalendarPageState extends State<CalendarPage>
       context,
       MaterialPageRoute(builder: (_) => TaskDetailPage(task: t)),
     );
-    if (changed == true && mounted) await _reload();
+    if (changed == true && mounted) {
+      await _reloadAfterSync();
+    }
   }
 
   String _two(int n) => n.toString().padLeft(2, '0');
@@ -272,16 +277,13 @@ class _CalendarPageState extends State<CalendarPage>
     );
   }
 
-  // ============================
-  // ✅ เพิ่มรายการ
-  // ============================
   Future<void> _addForSelectedDay() async {
     final uid = _uid;
-    if (uid == null) return;
+    if (uid == null || uid.isEmpty) return;
 
     final ctrl = TextEditingController();
 
-    DateTime pickedDay = _selectedDay;
+    DateTime pickedDay = _dayKey(_selectedDay);
     TimeOfDay pickedTime = TimeOfDay.now();
     String pickedCatKey = _kWork;
 
@@ -323,7 +325,8 @@ class _CalendarPageState extends State<CalendarPage>
             }
 
             final dayText = formatDate(context, pickedDay);
-            final timeText = '${_two(pickedTime.hour)}:${_two(pickedTime.minute)}';
+            final timeText =
+                '${_two(pickedTime.hour)}:${_two(pickedTime.minute)}';
 
             return Center(
               child: Padding(
@@ -344,8 +347,8 @@ class _CalendarPageState extends State<CalendarPage>
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black
-                                .withOpacity(isDark ? 0.35 : 0.08),
+                            color:
+                                Colors.black.withOpacity(isDark ? 0.35 : 0.08),
                             blurRadius: 30,
                             offset: const Offset(0, 14),
                           ),
@@ -404,8 +407,7 @@ class _CalendarPageState extends State<CalendarPage>
                                   _catLabel(l10n, _kWork),
                                   pickedCatKey == _kWork,
                                   _catAccent(scheme, _kWork),
-                                  () => setLocalState(
-                                      () => pickedCatKey = _kWork),
+                                  () => setLocalState(() => pickedCatKey = _kWork),
                                 ),
                                 _chip(
                                   context,
@@ -420,8 +422,7 @@ class _CalendarPageState extends State<CalendarPage>
                                   _catLabel(l10n, _kPlan),
                                   pickedCatKey == _kPlan,
                                   _catAccent(scheme, _kPlan),
-                                  () => setLocalState(
-                                      () => pickedCatKey = _kPlan),
+                                  () => setLocalState(() => pickedCatKey = _kPlan),
                                 ),
                                 _chip(
                                   context,
@@ -440,18 +441,24 @@ class _CalendarPageState extends State<CalendarPage>
                               child: Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 12),
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: _tint(card, scheme.primary,
-                                      isDark ? 0.16 : 0.08),
+                                  color: _tint(
+                                    card,
+                                    scheme.primary,
+                                    isDark ? 0.16 : 0.08,
+                                  ),
                                   borderRadius: BorderRadius.circular(18),
                                   border: Border.all(color: line),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.event_rounded,
-                                        color: scheme.primary
-                                            .withOpacity(0.90)),
+                                    Icon(
+                                      Icons.event_rounded,
+                                      color: scheme.primary.withOpacity(0.90),
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
@@ -467,8 +474,8 @@ class _CalendarPageState extends State<CalendarPage>
                                     Text(
                                       l10n.pickDate,
                                       style: TextStyle(
-                                        color: scheme.onSurface.withOpacity(
-                                            isDark ? 0.70 : 0.60),
+                                        color: scheme.onSurface
+                                            .withOpacity(isDark ? 0.70 : 0.60),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -483,18 +490,24 @@ class _CalendarPageState extends State<CalendarPage>
                               child: Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 12),
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: _tint(card, scheme.primary,
-                                      isDark ? 0.14 : 0.06),
+                                  color: _tint(
+                                    card,
+                                    scheme.primary,
+                                    isDark ? 0.14 : 0.06,
+                                  ),
                                   borderRadius: BorderRadius.circular(18),
                                   border: Border.all(color: line),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.schedule_rounded,
-                                        color: scheme.primary
-                                            .withOpacity(0.90)),
+                                    Icon(
+                                      Icons.schedule_rounded,
+                                      color: scheme.primary.withOpacity(0.90),
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
@@ -510,8 +523,8 @@ class _CalendarPageState extends State<CalendarPage>
                                     Text(
                                       l10n.pickTime,
                                       style: TextStyle(
-                                        color: scheme.onSurface.withOpacity(
-                                            isDark ? 0.70 : 0.60),
+                                        color: scheme.onSurface
+                                            .withOpacity(isDark ? 0.70 : 0.60),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -527,9 +540,10 @@ class _CalendarPageState extends State<CalendarPage>
                                     onPressed: () => Navigator.pop(context),
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
-                                      foregroundColor: scheme.onSurface
-                                          .withOpacity(0.75),
+                                        vertical: 12,
+                                      ),
+                                      foregroundColor:
+                                          scheme.onSurface.withOpacity(0.75),
                                     ),
                                     child: Text(l10n.cancel),
                                   ),
@@ -549,7 +563,6 @@ class _CalendarPageState extends State<CalendarPage>
                                         pickedTime.minute,
                                       );
 
-                                      // ✅ แก้ตรงนี้: สร้าง cloudId ตอนกด Save
                                       final cloudId = _uuid.v4();
 
                                       Navigator.pop(
@@ -559,6 +572,7 @@ class _CalendarPageState extends State<CalendarPage>
                                           title: text,
                                           category: pickedCatKey,
                                           date: when,
+                                          cloudId: cloudId,
                                         ),
                                       );
                                     },
@@ -567,10 +581,10 @@ class _CalendarPageState extends State<CalendarPage>
                                       foregroundColor: Colors.white,
                                       elevation: 0,
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
+                                        vertical: 12,
+                                      ),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
                                     ),
                                     child: Text(l10n.save),
@@ -613,7 +627,7 @@ class _CalendarPageState extends State<CalendarPage>
       _focusedDay = _selectedDay;
     });
 
-    await _reload();
+    await _reloadAfterSync();
   }
 
   Widget _chip(
@@ -656,8 +670,10 @@ class _CalendarPageState extends State<CalendarPage>
               decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
             ),
             const SizedBox(width: 8),
-            Text(label,
-                style: TextStyle(color: fg, fontWeight: FontWeight.w800)),
+            Text(
+              label,
+              style: TextStyle(color: fg, fontWeight: FontWeight.w800),
+            ),
           ],
         ),
       ),
@@ -743,7 +759,8 @@ class _CalendarPageState extends State<CalendarPage>
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(isDark ? 0.25 : 0.06),
+                            color:
+                                Colors.black.withOpacity(isDark ? 0.25 : 0.06),
                             blurRadius: 26,
                             offset: const Offset(0, 16),
                           ),
@@ -769,8 +786,9 @@ class _CalendarPageState extends State<CalendarPage>
                         ),
                         calendarStyle: CalendarStyle(
                           todayDecoration: BoxDecoration(
-                            color:
-                                scheme.primary.withOpacity(isDark ? 0.22 : 0.12),
+                            color: scheme.primary.withOpacity(
+                              isDark ? 0.22 : 0.12,
+                            ),
                             shape: BoxShape.circle,
                           ),
                           selectedDecoration: BoxDecoration(
@@ -781,26 +799,30 @@ class _CalendarPageState extends State<CalendarPage>
                             color: scheme.primary.withOpacity(0.70),
                             shape: BoxShape.circle,
                           ),
-                          defaultTextStyle:
-                              TextStyle(color: scheme.onSurface),
-                          weekendTextStyle:
-                              TextStyle(color: scheme.onSurface),
+                          defaultTextStyle: TextStyle(color: scheme.onSurface),
+                          weekendTextStyle: TextStyle(color: scheme.onSurface),
                           outsideDaysVisible: false,
                         ),
                         daysOfWeekStyle: DaysOfWeekStyle(
-                          weekdayStyle:
-                              TextStyle(color: muted, fontWeight: FontWeight.w800),
-                          weekendStyle:
-                              TextStyle(color: muted, fontWeight: FontWeight.w800),
+                          weekdayStyle: TextStyle(
+                            color: muted,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          weekendStyle: TextStyle(
+                            color: muted,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                         onDaySelected: (selected, focused) {
+                          final normalizedSelected = _dayKey(selected);
                           setState(() {
-                            _selectedDay = selected;
+                            _selectedDay = normalizedSelected;
                             _focusedDay = focused;
                             _selectedTasks =
-                                List<Task>.from(_eventsForDay(selected));
+                                List<Task>.from(_eventsForDay(normalizedSelected));
                             _selectedTasks.sort((a, b) {
-                              final s = (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
+                              final s =
+                                  (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
                               if (s != 0) return s;
                               return a.date.compareTo(b.date);
                             });
@@ -831,8 +853,9 @@ class _CalendarPageState extends State<CalendarPage>
                                 l10n.calendarEmptyHint,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: scheme.onSurface
-                                      .withOpacity(isDark ? 0.70 : 0.60),
+                                  color: scheme.onSurface.withOpacity(
+                                    isDark ? 0.70 : 0.60,
+                                  ),
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -847,15 +870,15 @@ class _CalendarPageState extends State<CalendarPage>
                                   onOpen: () => _openTask(task),
                                   onToggleDone: () async {
                                     await TaskDao.instance.toggleDone(task);
-                                    await _reload();
+                                    await _reloadAfterSync();
                                   },
                                   onToggleStar: () async {
                                     await TaskDao.instance.toggleStar(task);
-                                    await _reload();
+                                    await _reloadAfterSync();
                                   },
                                   onDelete: () async {
                                     await _deleteTask(task);
-                                    await _reload();
+                                    await _reloadAfterSync();
                                   },
                                   categoryText: _catLabel(l10n, task.category),
                                 );
@@ -884,9 +907,9 @@ class _TaskTile extends StatelessWidget {
   final Task task;
   final String categoryText;
   final VoidCallback onOpen;
-  final VoidCallback onToggleDone;
-  final VoidCallback onToggleStar;
-  final VoidCallback onDelete;
+  final Future<void> Function() onToggleDone;
+  final Future<void> Function() onToggleStar;
+  final Future<void> Function() onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -901,8 +924,9 @@ class _TaskTile extends StatelessWidget {
 
     final now = DateTime.now();
     final overdue = !task.done && task.date.isBefore(now);
-    final nearDue =
-        !task.done && !overdue && task.date.difference(now) <= const Duration(days: 2);
+    final nearDue = !task.done &&
+        !overdue &&
+        task.date.difference(now) <= const Duration(days: 2);
 
     final dateColor = overdue
         ? Colors.red
@@ -910,9 +934,9 @@ class _TaskTile extends StatelessWidget {
             ? const Color(0xFFE0D51C)
             : muted;
 
-    // ✅ แก้ key: ใช้ cloudId ถ้ามี (กันชน/กันซ้ำก่อนมี id)
-    final safeKey = (task.cloudId.trim().isNotEmpty)
-        ? 'cal_task_${task.cloudId}'
+    final cloudId = task.cloudId.trim();
+    final safeKey = cloudId.isNotEmpty
+        ? 'cal_task_$cloudId'
         : 'cal_task_${task.id ?? task.title}_${task.date.millisecondsSinceEpoch}';
 
     return Dismissible(
@@ -925,12 +949,14 @@ class _TaskTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.red.withOpacity(isDark ? 0.20 : 0.12),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.red.withOpacity(isDark ? 0.35 : 0.25)),
+          border: Border.all(
+            color: Colors.red.withOpacity(isDark ? 0.35 : 0.25),
+          ),
         ),
         child: const Icon(Icons.delete_rounded, color: Colors.red),
       ),
       confirmDismiss: (_) async {
-        onDelete();
+        await onDelete();
         return true;
       },
       child: InkWell(
@@ -948,7 +974,7 @@ class _TaskTile extends StatelessWidget {
             children: [
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: onToggleDone,
+                onTap: () async => onToggleDone(),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -985,8 +1011,9 @@ class _TaskTile extends StatelessWidget {
                       style: TextStyle(
                         color: scheme.onSurface,
                         fontWeight: FontWeight.w900,
-                        decoration:
-                            task.done ? TextDecoration.lineThrough : TextDecoration.none,
+                        decoration: task.done
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1014,7 +1041,7 @@ class _TaskTile extends StatelessWidget {
               ),
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: onToggleStar,
+                onTap: () async => onToggleStar(),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -1030,7 +1057,9 @@ class _TaskTile extends StatelessWidget {
                     ),
                   ),
                   child: Icon(
-                    task.starred ? Icons.star_rounded : Icons.star_border_rounded,
+                    task.starred
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     color: task.starred ? const Color(0xFFE0D51C) : muted,
                   ),
                 ),
@@ -1046,7 +1075,9 @@ class _TaskTile extends StatelessWidget {
 class _TimeTextInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final digits = newValue.text.replaceAll(':', '');
     final d = digits.length > 4 ? digits.substring(0, 4) : digits;
     final out = (d.length <= 2) ? d : '${d.substring(0, 2)}:${d.substring(2)}';

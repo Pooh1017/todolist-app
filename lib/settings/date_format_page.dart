@@ -18,8 +18,13 @@ class _DateFormatPageState extends State<DateFormatPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final settings = AppSettingsScope.of(context);
-    fmt = settings.dateFormat;
+    fmt = AppSettingsScope.of(context).dateFormat;
+  }
+
+  Future<void> _setFmt(String value) async {
+    if (fmt == value) return;
+    setState(() => fmt = value);
+    await AppSettingsScope.of(context).setDateFormat(value);
   }
 
   @override
@@ -33,81 +38,61 @@ class _DateFormatPageState extends State<DateFormatPage> {
           color: cs.onSurface,
         );
 
-    Future<void> setFmt(String value) async {
-      setState(() => fmt = value);
-      await AppSettingsScope.of(context).setDateFormat(value);
-    }
+    TextStyle? subStyle() => theme.textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: cs.onSurfaceVariant.withOpacity(0.9),
+        );
 
     return SettingsBasePage(
       title: t.dateFormat,
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 6),
         children: [
-          // dd-MM-yyyy
           RadioListTile<String>(
             value: 'dd-MM-yyyy',
             groupValue: fmt,
             activeColor: cs.primary,
             title: Text('31-12-2026', style: titleStyle()),
-            subtitle: Text(
-              t.dateFmtDmyDash,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: cs.onSurfaceVariant.withOpacity(0.9),
-              ),
-            ),
-            onChanged: (v) => setFmt(v ?? fmt),
+            subtitle: Text(t.dateFmtDmyDash, style: subStyle()),
+            onChanged: (v) {
+              if (v != null) _setFmt(v);
+            },
           ),
           Divider(color: cs.outlineVariant.withOpacity(0.4), height: 1),
 
-          // dd/MM/yyyy
           RadioListTile<String>(
             value: 'dd/MM/yyyy',
             groupValue: fmt,
             activeColor: cs.primary,
             title: Text('31/12/2026', style: titleStyle()),
-            subtitle: Text(
-              t.dateFmtDmySlash,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: cs.onSurfaceVariant.withOpacity(0.9),
-              ),
-            ),
-            onChanged: (v) => setFmt(v ?? fmt),
+            subtitle: Text(t.dateFmtDmySlash, style: subStyle()),
+            onChanged: (v) {
+              if (v != null) _setFmt(v);
+            },
           ),
           Divider(color: cs.outlineVariant.withOpacity(0.4), height: 1),
 
-          // MM/dd/yyyy
           RadioListTile<String>(
             value: 'MM/dd/yyyy',
             groupValue: fmt,
             activeColor: cs.primary,
             title: Text('12/31/2026', style: titleStyle()),
-            subtitle: Text(
-              t.dateFmtMdySlash,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: cs.onSurfaceVariant.withOpacity(0.9),
-              ),
-            ),
-            onChanged: (v) => setFmt(v ?? fmt),
+            subtitle: Text(t.dateFmtMdySlash, style: subStyle()),
+            onChanged: (v) {
+              if (v != null) _setFmt(v);
+            },
           ),
           Divider(color: cs.outlineVariant.withOpacity(0.4), height: 1),
 
-          // yyyy-MM-dd
           RadioListTile<String>(
             value: 'yyyy-MM-dd',
             groupValue: fmt,
             activeColor: cs.primary,
             title: Text('2026-12-31', style: titleStyle()),
-            subtitle: Text(
-              t.dateFmtYmdDash,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: cs.onSurfaceVariant.withOpacity(0.9),
-              ),
-            ),
-            onChanged: (v) => setFmt(v ?? fmt),
+            subtitle: Text(t.dateFmtYmdDash, style: subStyle()),
+            onChanged: (v) {
+              if (v != null) _setFmt(v);
+            },
           ),
         ],
       ),

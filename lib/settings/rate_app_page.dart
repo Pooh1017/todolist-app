@@ -11,7 +11,7 @@ class RateAppPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return SettingsBasePage(
       title: t.rate5Stars,
@@ -31,7 +31,6 @@ class RateAppPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: FilledButton.icon(
               onPressed: () {
-                // TODO: ขั้นต่อไปค่อยใส่การเปิด Play Store / App Store
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(t.rateSnackExample)),
                 );

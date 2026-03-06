@@ -20,10 +20,7 @@ class _ThemePageState extends State<ThemePage> {
     super.didChangeDependencies();
     final settings = AppSettingsScope.of(context);
     final pref = settings.themePref; // light/dark
-    final v = (pref == 'dark') ? 'dark' : 'light';
-    if (_value != v) {
-      setState(() => _value = v);
-    }
+    _value = (pref == 'dark') ? 'dark' : 'light';
   }
 
   Future<void> _save(String v) async {
@@ -36,14 +33,13 @@ class _ThemePageState extends State<ThemePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return SettingsBasePage(
       title: t.theme,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
         children: [
-          // ✅ Preview Card
           Card(
             elevation: 0,
             color: cs.surfaceVariant.withOpacity(
@@ -94,7 +90,6 @@ class _ThemePageState extends State<ThemePage> {
             ),
           ),
           const SizedBox(height: 12),
-
           _ThemeOptionTile(
             title: t.light,
             subtitle: t.themeLightDesc,
@@ -103,7 +98,6 @@ class _ThemePageState extends State<ThemePage> {
             onTap: () => _save('light'),
           ),
           const SizedBox(height: 10),
-
           _ThemeOptionTile(
             title: t.dark,
             subtitle: t.themeDarkDesc,
@@ -111,9 +105,7 @@ class _ThemePageState extends State<ThemePage> {
             selected: _value == 'dark',
             onTap: () => _save('dark'),
           ),
-
           const SizedBox(height: 16),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
@@ -213,7 +205,9 @@ class _ThemeOptionTile extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: selected ? cs.primary : Colors.transparent,
                   border: Border.all(
-                    color: selected ? cs.primary : cs.onSurface.withOpacity(0.35),
+                    color: selected
+                        ? cs.primary
+                        : cs.onSurface.withOpacity(0.35),
                     width: 1.4,
                   ),
                 ),

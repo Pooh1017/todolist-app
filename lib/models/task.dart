@@ -28,43 +28,47 @@ class Task {
     this.id,
     required String userId,
     required String cloudId,
-    required this.title,
-    required this.category,
+    required String title,
+    required String category,
     required this.date,
     this.starred = false,
     this.done = false,
-    this.note = '',
+    String note = '',
     int? updatedAt,
     this.deleted = false,
     this.syncState = 1,
   })  : userId = userId.trim(),
-        cloudId = (cloudId.trim().isEmpty ? genCloudId() : cloudId.trim()),
+        cloudId = cloudId.trim().isEmpty ? genCloudId() : cloudId.trim(),
+        title = title.trim(),
+        category = category.trim(),
+        note = note,
         updatedAt = (updatedAt != null && updatedAt > 0)
             ? updatedAt
             : DateTime.now().millisecondsSinceEpoch;
 
-  /// ✅ generate cloudId (ไม่ต้องพึ่ง package)
+  /// ✅ generate cloudId
   static String genCloudId([String prefix = 't']) {
-    final r = Random();
+    final r = Random.secure();
     final ts = DateTime.now().microsecondsSinceEpoch;
-    final a = r.nextInt(1 << 32).toRadixString(16);
-    final b = r.nextInt(1 << 32).toRadixString(16);
+    final a = r.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
+    final b = r.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
     return '${prefix}_${ts}_$a$b';
   }
 
-  /// ✅ สร้างงานใหม่ local (กันลืม cloudId/updatedAt/syncState)
+  /// ✅ สร้างงานใหม่ local
   factory Task.newLocal({
     required String userId,
     required String title,
     required String category,
     required DateTime date,
+    String? cloudId,
     bool starred = false,
     bool done = false,
     String note = '',
   }) {
     return Task(
       userId: userId,
-      cloudId: genCloudId(),
+      cloudId: (cloudId ?? '').trim().isEmpty ? genCloudId() : cloudId!.trim(),
       title: title,
       category: category,
       date: date,
@@ -125,43 +129,60 @@ class Task {
   }
 
   static Task fromMap(Map<String, Object?> map) {
-    int _asInt(Object? v, {int fallback = 0}) {
+    int asInt(Object? v, {int fallback = 0}) {
+      if (v == null) return fallback;
       if (v is int) return v;
       if (v is num) return v.toInt();
       if (v is String) return int.tryParse(v) ?? fallback;
       return fallback;
     }
 
-    bool _asBool01(Object? v) => _asInt(v) == 1;
+    bool asBool(Object? v, {bool fallback = false}) {
+      if (v == null) return fallback;
+      if (v is bool) return v;
+      if (v is int) return v == 1;
+      if (v is num) return v.toInt() == 1;
+      if (v is String) {
+        final s = v.toLowerCase().trim();
+        if (s == '1' || s == 'true') return true;
+        if (s == '0' || s == 'false') return false;
+      }
+      return fallback;
+    }
 
-    String _asString(Object? v, {String fallback = ''}) {
+    String asString(Object? v, {String fallback = ''}) {
       if (v == null) return fallback;
       if (v is String) return v;
       return v.toString();
     }
 
-    final userId = _asString(map['user_id']).trim();
-    final cloudId = _asString(map['cloud_id']).trim();
+    final userId = asString(map['user_id']).trim();
+    final cloudId = asString(map['cloud_id']).trim();
 
-    final dateMs = _asInt(
+    final dateMs = asInt(
       map['date_ms'],
       fallback: DateTime.now().millisecondsSinceEpoch,
     );
-    final updatedAt = _asInt(map['updated_at'], fallback: dateMs);
+    final updatedAt = asInt(map['updated_at'], fallback: dateMs);
 
     return Task(
       id: map['id'] as int?,
       userId: userId,
       cloudId: cloudId.isEmpty ? genCloudId('migr') : cloudId,
-      title: _asString(map['title']),
-      category: _asString(map['category']),
+      title: asString(map['title']),
+      category: asString(map['category']),
       date: DateTime.fromMillisecondsSinceEpoch(dateMs),
-      starred: _asBool01(map['starred']),
-      done: _asBool01(map['done']),
-      note: _asString(map['note']),
+      starred: asBool(map['starred']),
+      done: asBool(map['done']),
+      note: asString(map['note']),
       updatedAt: updatedAt,
-      deleted: _asBool01(map['deleted']),
-      syncState: _asInt(map['sync_state'], fallback: 1),
+      deleted: asBool(map['deleted']),
+      syncState: asInt(map['sync_state'], fallback: 1),
     );
+  }
+
+  @override
+  String toString() {
+    return 'Task(id: $id, userId: $userId, cloudId: $cloudId, title: $title, category: $category, date: $date, starred: $starred, done: $done, deleted: $deleted, syncState: $syncState, updatedAt: $updatedAt)';
   }
 }

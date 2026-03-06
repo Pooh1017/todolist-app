@@ -1,5 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'home_page.dart';
+import 'login_page.dart';
+import 'sync/sync_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -9,10 +14,13 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleIn;
   late final Animation<double> _fadeIn;
+
+  late final AnimationController _zoomOutController;
+  late final Animation<double> _extraZoom;
 
   Timer? _timer;
 
@@ -25,7 +33,6 @@ class _SplashPageState extends State<SplashPage>
       duration: const Duration(milliseconds: 900),
     );
 
-    // เข้าแบบเด้งนิดๆ
     _scaleIn = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
@@ -34,65 +41,75 @@ class _SplashPageState extends State<SplashPage>
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
 
+    _zoomOutController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+
+    _extraZoom = Tween<double>(begin: 1.0, end: 1.18).animate(
+      CurvedAnimation(parent: _zoomOutController, curve: Curves.easeOutCubic),
+    );
+
     _controller.forward();
 
-    // รอให้เห็นโลโก้ก่อน แล้วค่อย “ขยายใหญ่ขึ้น” แล้วไปหน้า login
     _timer = Timer(const Duration(milliseconds: 1600), () async {
-      // ขยายใหญ่ขึ้นตอนท้าย (zoom out)
-      await _controller.animateTo(
-        1.0,
-        duration: const Duration(milliseconds: 0),
-      );
+      if (!mounted) return;
+      await _playZoomOut();
+      if (!mounted) return;
+      await _goNext();
+    });
+  }
+
+  Future<void> _goNext() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      try {
+        await SyncService.instance.syncNow();
+      } catch (e) {
+        debugPrint('Splash sync error: $e');
+      }
 
       if (!mounted) return;
-
       await Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 260),
-          pageBuilder: (_, __, ___) => const _GoLoginRoute(),
+          pageBuilder: (_, __, ___) => const HomePage(),
           transitionsBuilder: (_, anim, __, child) {
             return FadeTransition(opacity: anim, child: child);
           },
         ),
       );
-    });
+      return;
+    }
+
+    if (!mounted) return;
+    await Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 260),
+        pageBuilder: (_, __, ___) => const LoginPage(),
+        transitionsBuilder: (_, anim, __, child) {
+          return FadeTransition(opacity: anim, child: child);
+        },
+      ),
+    );
+  }
+
+  Future<void> _playZoomOut() async {
+    if (_zoomOutController.isAnimating) return;
+    await _zoomOutController.forward(from: 0);
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _zoomOutController.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _playZoomOut() async {
-    // เพิ่มเอฟเฟกต์ขยายใหญ่ขึ้นแบบเนียนๆ
-    final zoomController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    );
-
-    final zoom = Tween<double>(begin: 1.0, end: 1.18).animate(
-      CurvedAnimation(parent: zoomController, curve: Curves.easeOutCubic),
-    );
-
-    // เล่นแบบ overlay ด้วย setState ผ่าน AnimatedBuilder
-    // ทำง่ายสุด: ใช้ showGeneralDialog ทับ (แต่ไม่จำเป็น)
-    // เลยใช้วิธีปรับ scale ด้วย AnimatedBuilder แทนด้านล่าง (ดู build)
-    _extraZoom = zoom;
-    _extraZoomController = zoomController;
-
-    if (mounted) setState(() {});
-    await zoomController.forward();
-  }
-
-  AnimationController? _extraZoomController;
-  Animation<double>? _extraZoom;
-
   @override
   Widget build(BuildContext context) {
-    final extraZoom = _extraZoom;
-
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -110,10 +127,12 @@ class _SplashPageState extends State<SplashPage>
             child: ScaleTransition(
               scale: _scaleIn,
               child: AnimatedBuilder(
-                animation: extraZoom ?? const AlwaysStoppedAnimation(1.0),
+                animation: _extraZoom,
                 builder: (context, child) {
-                  final s = (extraZoom?.value ?? 1.0);
-                  return Transform.scale(scale: s, child: child);
+                  return Transform.scale(
+                    scale: _extraZoom.value,
+                    child: child,
+                  );
                 },
                 child: Container(
                   width: 220,
@@ -141,20 +160,5 @@ class _SplashPageState extends State<SplashPage>
         ),
       ),
     );
-  }
-}
-
-/// Route ไปหน้า login จริงของคุณ (ใช้ชื่อ route ก็ได้)
-// ถ้าคุณใช้ pushReplacementNamed('/login') ให้เปลี่ยนด้านล่างเป็น LoginPage() ได้เลย
-class _GoLoginRoute extends StatelessWidget {
-  const _GoLoginRoute();
-
-  @override
-  Widget build(BuildContext context) {
-    // ✅ ไปหน้า login ด้วย named route เดิมของคุณ
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).pushReplacementNamed('/login');
-    });
-    return const SizedBox.shrink();
   }
 }

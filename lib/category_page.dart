@@ -1,6 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -10,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'db/task_dao.dart';
 import 'models/task.dart';
 import 'task_detail_page.dart';
+import 'sync/sync_service.dart';
 
 // ✅ ใช้รูปแบบวันที่ตาม Settings ทั้งแอพ
 import 'utils/date_fmt.dart';
@@ -22,8 +22,6 @@ class CategoryPage extends StatefulWidget {
     super.key,
     required this.title,
     required this.primaryColor,
-
-    // ✅ ใช้ key แทน title เพื่อให้ logic ไม่พังตอนเปลี่ยนภาษา
     required this.categoryKey, // 'work' | 'todo_all' | 'plan' | 'near_due'
   });
 
@@ -38,11 +36,9 @@ class CategoryPage extends StatefulWidget {
 }
 
 class _CategoryPageState extends State<CategoryPage> {
-  // ✅ โทนเดียวกับหน้า Home (fallback light gradient)
   static const _bgTopLight = Color(0xFFF6F7FB);
   static const _bgBottomLight = Color(0xFFF1F3F8);
 
-  // ✅ คีย์หมวดหมู่ (ให้ตรงกับ HomePage)
   static const String _kWork = 'work';
   static const String _kTodoAll = 'todo_all';
   static const String _kPlan = 'plan';
@@ -51,7 +47,6 @@ class _CategoryPageState extends State<CategoryPage> {
   bool _loading = true;
   final List<Task> _items = [];
 
-  // ✅ หน้ารวม “สิ่งที่ต้องทำ (รวมดาว)”
   bool get _isTodoAllPage => widget.categoryKey == _kTodoAll;
 
   @override
@@ -60,19 +55,13 @@ class _CategoryPageState extends State<CategoryPage> {
     _reload();
   }
 
-  // ============================
-  // ✅ Category mapping (รองรับข้อมูลเก่าไทยด้วย)
-  // ============================
-
   String _catKeyOf(Task t) {
-    final c = (t.category).trim();
+    final c = t.category.trim();
 
-    // ข้อมูลใหม่: เก็บเป็น key
     if (c == _kWork || c == _kTodoAll || c == _kPlan || c == _kNearDue) {
       return c;
     }
 
-    // ข้อมูลเก่า (ไทย)
     if (c == 'งาน') return _kWork;
     if (c == 'สิ่งที่ต้องทำ') return _kTodoAll;
     if (c == 'ที่วางแผนไว้') return _kPlan;
@@ -95,7 +84,6 @@ class _CategoryPageState extends State<CategoryPage> {
       case _kNearDue:
         return t.drawerCatImportant;
       default:
-        // fallback กรณีเป็นไทยเก่า
         if (key == 'งาน') return t.drawerCatWork;
         if (key == 'สิ่งที่ต้องทำ') return t.drawerCatTodo;
         if (key == 'ที่วางแผนไว้') return t.drawerCatPlan;
@@ -108,7 +96,7 @@ class _CategoryPageState extends State<CategoryPage> {
     if (!mounted) return;
     setState(() => _loading = true);
 
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid?.trim() ?? '';
     if (uid.isEmpty) {
       setState(() {
         _items.clear();
@@ -123,19 +111,16 @@ class _CategoryPageState extends State<CategoryPage> {
     List<Task> data;
 
     if (_isTodoAllPage) {
-      // ✅ รวม todo_all + starred เฉพาะที่ยังไม่เสร็จ
       data = all
           .where((x) => !x.done && (_catKeyOf(x) == _kTodoAll || x.starred))
           .toList();
     } else {
-      // ✅ หน้าอื่น: เอาตามหมวด และไม่เอางาน starred
       data = all
           .where((x) =>
               !x.done && _catKeyOf(x) == widget.categoryKey && !x.starred)
           .toList();
     }
 
-    // ✅ เรียง: ดาวก่อน แล้วตามเวลา
     data.sort((a, b) {
       final s = (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
       if (s != 0) return s;
@@ -148,6 +133,11 @@ class _CategoryPageState extends State<CategoryPage> {
         ..addAll(data);
       _loading = false;
     });
+  }
+
+  Future<void> _reloadAfterSync() async {
+    await SyncService.instance.syncNow();
+    await _reload();
   }
 
   Color _tint(Color base, Color accent, double amount) =>
@@ -246,7 +236,7 @@ class _CategoryPageState extends State<CategoryPage> {
     DateTime pickedDate = DateTime.now();
     TimeOfDay pickedTime = TimeOfDay.now();
 
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid?.trim() ?? '';
     if (uid.isEmpty) return;
 
     final created = await showGeneralDialog<Task>(
@@ -336,7 +326,6 @@ class _CategoryPageState extends State<CategoryPage> {
                               ),
                             ),
                             const SizedBox(height: 12),
-
                             InkWell(
                               borderRadius: BorderRadius.circular(18),
                               onTap: () async {
@@ -367,9 +356,11 @@ class _CategoryPageState extends State<CategoryPage> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.event_rounded,
-                                        color: widget.primaryColor
-                                            .withOpacity(0.92)),
+                                    Icon(
+                                      Icons.event_rounded,
+                                      color:
+                                          widget.primaryColor.withOpacity(0.92),
+                                    ),
                                     const SizedBox(width: 10),
                                     Text(
                                       formatDate(context, pickedDate),
@@ -390,7 +381,6 @@ class _CategoryPageState extends State<CategoryPage> {
                               ),
                             ),
                             const SizedBox(height: 10),
-
                             InkWell(
                               borderRadius: BorderRadius.circular(18),
                               onTap: () async {
@@ -419,9 +409,11 @@ class _CategoryPageState extends State<CategoryPage> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.access_time_rounded,
-                                        color: widget.primaryColor
-                                            .withOpacity(0.92)),
+                                    Icon(
+                                      Icons.access_time_rounded,
+                                      color:
+                                          widget.primaryColor.withOpacity(0.92),
+                                    ),
                                     const SizedBox(width: 10),
                                     Text(
                                       _timeText(pickedTime),
@@ -441,7 +433,6 @@ class _CategoryPageState extends State<CategoryPage> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 14),
                             Row(
                               children: [
@@ -475,7 +466,6 @@ class _CategoryPageState extends State<CategoryPage> {
                                           ? _kTodoAll
                                           : widget.categoryKey;
 
-                                      // ✅ FIX: ใช้ newLocal เพื่อได้ cloudId/updatedAt/syncState อัตโนมัติ
                                       Navigator.pop(
                                         context,
                                         Task.newLocal(
@@ -527,9 +517,8 @@ class _CategoryPageState extends State<CategoryPage> {
 
     if (created == null) return;
 
-    // ✅ ใส่ userId ให้ชัวร์ (กันกรณีถูกส่งมาว่าง)
     await TaskDao.instance.insert(created.copyWith(userId: uid));
-    await _reload();
+    await _reloadAfterSync();
   }
 
   Color _accentForTask(Task x) {
@@ -549,7 +538,10 @@ class _CategoryPageState extends State<CategoryPage> {
       context,
       MaterialPageRoute(builder: (_) => TaskDetailPage(task: x)),
     );
-    if (changed == true) await _reload();
+
+    if (changed == true) {
+      await _reloadAfterSync();
+    }
   }
 
   @override
@@ -583,111 +575,119 @@ class _CategoryPageState extends State<CategoryPage> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: card,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: line),
-                        ),
-                        child: Icon(Icons.arrow_back_rounded, color: ink),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        titleText,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: ink,
-                        ),
-                      ),
-                    ),
-                    if (_loading)
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Expanded(
-                  child: _loading
-                      ? Center(
-                          child: CircularProgressIndicator(
-                            color: widget.primaryColor.withOpacity(0.9),
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Row(
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: card,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: line),
                           ),
-                        )
-                      : _items.isEmpty
-                          ? Center(
-                              child: Text(
-                                t.categoryEmptyHint,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: muted.withOpacity(0.95),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: _items.length,
-                              itemBuilder: (_, i) {
-                                final x = _items[i];
-                                final accent = _accentForTask(x);
-
-                                return _TaskTile(
-                                  task: x,
-                                  accent: accent,
-                                  categoryText:
-                                      _catLabel(context, _catKeyOf(x)),
-                                  card: card,
-                                  ink: ink,
-                                  muted: muted,
-                                  line: line,
-                                  isDark: isDark,
-                                  onOpen: () => unawaited(_openTask(x)),
-                                  onToggleDone: () => unawaited(() async {
-                                    await TaskDao.instance.toggleDone(x);
-                                    await _reload();
-                                  }()),
-                                  onToggleStar: () => unawaited(() async {
-                                    await TaskDao.instance.toggleStar(x);
-                                    await _reload();
-                                  }()),
-                                  onDelete: () => unawaited(() async {
-                                    if (x.id != null) {
-                                      await TaskDao.instance.deleteById(x.id!);
-                                      await _reload();
-                                    }
-                                  }()),
-                                );
-                              },
-                            ),
+                          child: Icon(Icons.arrow_back_rounded, color: ink),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          titleText,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: ink,
+                          ),
+                        ),
+                      ),
+                      if (_loading)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
                 ),
+                const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                if (_loading)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: widget.primaryColor.withOpacity(0.9),
+                      ),
+                    ),
+                  )
+                else if (_items.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text(
+                        t.categoryEmptyHint,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: muted.withOpacity(0.95),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, i) {
+                        final x = _items[i];
+                        final accent = _accentForTask(x);
+
+                        return _TaskTile(
+                          task: x,
+                          accent: accent,
+                          categoryText: _catLabel(context, _catKeyOf(x)),
+                          card: card,
+                          ink: ink,
+                          muted: muted,
+                          line: line,
+                          isDark: isDark,
+                          onOpen: () => _openTask(x),
+                          onToggleDone: () async {
+                            await TaskDao.instance.toggleDone(x);
+                            await _reloadAfterSync();
+                          },
+                          onToggleStar: () async {
+                            await TaskDao.instance.toggleStar(x);
+                            await _reloadAfterSync();
+                          },
+                          onDelete: () async {
+                            if (x.id != null) {
+                              await TaskDao.instance.deleteById(x.id!);
+                              await _reloadAfterSync();
+                            }
+                          },
+                        );
+                      },
+                      childCount: _items.length,
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 90)),
               ],
             ),
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => unawaited(_addTask(
+        onPressed: () => _addTask(
           card: card,
           ink: ink,
           muted: muted,
           line: line,
           isDark: isDark,
-        )),
+        ),
         backgroundColor: widget.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -724,9 +724,9 @@ class _TaskTile extends StatelessWidget {
   final bool isDark;
 
   final VoidCallback onOpen;
-  final VoidCallback onToggleDone;
-  final VoidCallback onToggleStar;
-  final VoidCallback onDelete;
+  final Future<void> Function() onToggleDone;
+  final Future<void> Function() onToggleStar;
+  final Future<void> Function() onDelete;
 
   Color _tint(Color base, Color accent, double amount) =>
       Color.lerp(base, accent, amount) ?? base;
@@ -737,9 +737,12 @@ class _TaskTile extends StatelessWidget {
     final cardBorder = accent.withOpacity(isDark ? 0.28 : 0.18);
     final chipBg = accent.withOpacity(isDark ? 0.18 : 0.14);
 
+    final safeKey = ((task.cloudId).trim().isNotEmpty)
+        ? 'cat_task_${task.cloudId}'
+        : 'cat_task_${task.id ?? task.title}_${task.date.millisecondsSinceEpoch}';
+
     return Dismissible(
-      key: ValueKey(
-          'cat_task_${task.id ?? task.cloudId}_${task.date.millisecondsSinceEpoch}'),
+      key: ValueKey(safeKey),
       direction: DismissDirection.endToStart,
       background: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -754,7 +757,7 @@ class _TaskTile extends StatelessWidget {
         child: const Icon(Icons.delete_rounded, color: Colors.red),
       ),
       confirmDismiss: (_) async {
-        onDelete();
+        await onDelete();
         return true;
       },
       child: InkWell(
@@ -772,7 +775,7 @@ class _TaskTile extends StatelessWidget {
             children: [
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: onToggleDone,
+                onTap: () async => onToggleDone(),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -824,8 +827,8 @@ class _TaskTile extends StatelessWidget {
                             color: chipBg,
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
-                                color:
-                                    accent.withOpacity(isDark ? 0.35 : 0.25)),
+                              color: accent.withOpacity(isDark ? 0.35 : 0.25),
+                            ),
                           ),
                           child: Text(
                             categoryText,
@@ -851,7 +854,7 @@ class _TaskTile extends StatelessWidget {
               ),
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: onToggleStar,
+                onTap: () async => onToggleStar(),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -863,7 +866,9 @@ class _TaskTile extends StatelessWidget {
                     border: Border.all(color: line),
                   ),
                   child: Icon(
-                    task.starred ? Icons.star_rounded : Icons.star_border_rounded,
+                    task.starred
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     color: task.starred ? const Color(0xFFE0D51C) : muted,
                   ),
                 ),

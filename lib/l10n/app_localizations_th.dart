@@ -496,4 +496,10 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get remindTypeVibrate => 'สั่น';
+
+  @override
+  String get notificationsEnabledMessage => 'เปิดการแจ้งเตือนแล้ว';
+
+  @override
+  String get notificationsDisabledMessage => 'ปิดการแจ้งเตือนแล้ว';
 }

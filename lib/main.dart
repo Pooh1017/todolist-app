@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'utils/notification_service.dart';
 
 // ✅ ต้องมีเพื่อให้ GlobalMaterialLocalizations ฯลฯ ใช้งานได้
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -24,7 +25,7 @@ Future<void> main() async {
 
   final settings = AppSettings();
   await settings.loadFromDb();
-
+  await NotificationService.instance.init();
   runApp(
     AppSettingsScope(
       settings: settings,

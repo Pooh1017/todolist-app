@@ -11,6 +11,7 @@ import 'sync/sync_service.dart';
 
 // ✅ ใช้ formatter เดียวทั้งแอพ (ตาม Settings + Locale)
 import 'utils/date_fmt.dart';
+import 'utils/notification_service.dart';
 
 // ✅ ใช้คำแปล
 import 'l10n/app_localizations.dart';
@@ -45,6 +46,35 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     _titleCtrl = TextEditingController(text: _task.title);
     _noteCtrl = TextEditingController(text: _task.note);
     _loadSubtasks();
+  }
+
+  int _notificationIdOf(Task task) {
+    if (task.id != null) return task.id!;
+    return task.date.millisecondsSinceEpoch ~/ 1000;
+  }
+
+  DateTime _notificationTimeOf(Task task) {
+    return task.date;
+  }
+
+  Future<void> _rescheduleNotificationFor(Task task) async {
+    await NotificationService.instance.cancel(_notificationIdOf(task));
+
+    if (task.done) return;
+
+    final notifyAt = _notificationTimeOf(task);
+    if (!notifyAt.isAfter(DateTime.now())) return;
+
+    await NotificationService.instance.scheduleNotification(
+      id: _notificationIdOf(task),
+      title: 'เตือนงาน',
+      body: task.title,
+      date: notifyAt,
+    );
+  }
+
+  Future<void> _cancelNotificationFor(Task task) async {
+    await NotificationService.instance.cancel(_notificationIdOf(task));
   }
 
   Future<void> _syncNow() async {
@@ -193,6 +223,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _rescheduleNotificationFor(updated);
     await _syncNow();
 
     if (!mounted) return;
@@ -346,6 +377,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _rescheduleNotificationFor(updated);
     await _syncNow();
 
     if (!mounted) return;
@@ -464,6 +496,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       syncState: 1,
     );
     await TaskDao.instance.updateTask(updated);
+    await _rescheduleNotificationFor(updated);
     await _syncNow();
 
     if (!mounted) return;
@@ -718,6 +751,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     if (ok != true) return;
 
+    await _cancelNotificationFor(_task);
+
     if (_task.id != null) {
       await TaskDao.instance.deleteById(_task.id!);
       await _syncNow();
@@ -743,6 +778,20 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     final newId = await TaskDao.instance.insert(copy);
+    final duplicated = copy.copyWith(id: newId);
+
+    if (!duplicated.done) {
+      final notifyAt = _notificationTimeOf(duplicated);
+      if (notifyAt.isAfter(DateTime.now())) {
+        await NotificationService.instance.scheduleNotification(
+          id: _notificationIdOf(duplicated),
+          title: 'เตือนงาน',
+          body: duplicated.title,
+          date: notifyAt,
+        );
+      }
+    }
+
     await _syncNow();
 
     final oldId = _task.id;
@@ -1180,10 +1229,21 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(18),
                                 onTap: () async {
+                                  final wasDone = _task.done;
+
                                   await TaskDao.instance.toggleDone(_task);
+
+                                  final updated = _task.copyWith(done: !wasDone);
+
+                                  if (!wasDone) {
+                                    await _cancelNotificationFor(updated);
+                                  } else {
+                                    await _rescheduleNotificationFor(updated);
+                                  }
+
                                   await _syncNow();
                                   if (!mounted) return;
-                                  setState(() => _task = _task.copyWith(done: !_task.done));
+                                  setState(() => _task = updated);
                                   _changed = true;
                                 },
                                 child: Container(

@@ -14,6 +14,7 @@ import 'models/task.dart';
 
 import 'task_detail_page.dart';
 import 'utils/date_fmt.dart';
+import 'utils/notification_service.dart';
 
 import 'l10n/app_localizations.dart';
 import 'sync/sync_service.dart';
@@ -54,6 +55,15 @@ class _HomePageState extends State<HomePage> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _two(int n) => n.toString().padLeft(2, '0');
+
+  int _notificationIdOf(Task task) {
+    if (task.id != null) return task.id!;
+    return task.date.millisecondsSinceEpoch ~/ 1000;
+  }
+
+  DateTime _notificationTimeOf(Task task) {
+    return task.date;
+  }
 
   static const String _kWork = 'work';
   static const String _kTodoAll = 'todo_all';
@@ -654,8 +664,19 @@ class _HomePageState extends State<HomePage> {
     if (result == null) return;
 
     final saveTask = result.copyWith(updatedAt: nowMs);
+    final insertedId = await TaskDao.instance.insert(saveTask);
+    final savedTask = saveTask.copyWith(id: insertedId);
 
-    await TaskDao.instance.insert(saveTask);
+    final notifyAt = _notificationTimeOf(savedTask);
+    if (notifyAt.isAfter(DateTime.now())) {
+      await NotificationService.instance.scheduleNotification(
+        id: _notificationIdOf(savedTask),
+        title: 'เตือนงาน',
+        body: savedTask.title,
+        date: notifyAt,
+      );
+    }
+
     _selectedDateForNewTask = saveTask.date;
     await _reloadAfterSync();
   }
@@ -975,6 +996,26 @@ class _HomePageState extends State<HomePage> {
                                           _catLabel(context, _catKeyOf(t)),
                                       onToggleDone: () async {
                                         await TaskDao.instance.toggleDone(t);
+
+                                        if (!t.done) {
+                                          await NotificationService.instance
+                                              .cancel(_notificationIdOf(t));
+                                        } else {
+                                          final updatedTask =
+                                              t.copyWith(done: false);
+                                          final notifyAt =
+                                              _notificationTimeOf(updatedTask);
+                                          if (notifyAt.isAfter(DateTime.now())) {
+                                            await NotificationService.instance
+                                                .scheduleNotification(
+                                              id: _notificationIdOf(updatedTask),
+                                              title: 'เตือนงาน',
+                                              body: updatedTask.title,
+                                              date: notifyAt,
+                                            );
+                                          }
+                                        }
+
                                         await _reloadAfterSync();
                                       },
                                       onToggleStar: () async {
@@ -982,8 +1023,11 @@ class _HomePageState extends State<HomePage> {
                                         await _reloadAfterSync();
                                       },
                                       onDelete: () async {
+                                        await NotificationService.instance
+                                            .cancel(_notificationIdOf(t));
                                         if (t.id != null) {
-                                          await TaskDao.instance.deleteById(t.id!);
+                                          await TaskDao.instance
+                                              .deleteById(t.id!);
                                         } else {
                                           await TaskDao.instance.deleteTask(t);
                                         }
@@ -1020,6 +1064,26 @@ class _HomePageState extends State<HomePage> {
                                           _catLabel(context, _catKeyOf(t)),
                                       onToggleDone: () async {
                                         await TaskDao.instance.toggleDone(t);
+
+                                        if (!t.done) {
+                                          await NotificationService.instance
+                                              .cancel(_notificationIdOf(t));
+                                        } else {
+                                          final updatedTask =
+                                              t.copyWith(done: false);
+                                          final notifyAt =
+                                              _notificationTimeOf(updatedTask);
+                                          if (notifyAt.isAfter(DateTime.now())) {
+                                            await NotificationService.instance
+                                                .scheduleNotification(
+                                              id: _notificationIdOf(updatedTask),
+                                              title: 'เตือนงาน',
+                                              body: updatedTask.title,
+                                              date: notifyAt,
+                                            );
+                                          }
+                                        }
+
                                         await _reloadAfterSync();
                                       },
                                       onToggleStar: () async {
@@ -1027,8 +1091,11 @@ class _HomePageState extends State<HomePage> {
                                         await _reloadAfterSync();
                                       },
                                       onDelete: () async {
+                                        await NotificationService.instance
+                                            .cancel(_notificationIdOf(t));
                                         if (t.id != null) {
-                                          await TaskDao.instance.deleteById(t.id!);
+                                          await TaskDao.instance
+                                              .deleteById(t.id!);
                                         } else {
                                           await TaskDao.instance.deleteTask(t);
                                         }
@@ -1065,6 +1132,26 @@ class _HomePageState extends State<HomePage> {
                                           _catLabel(context, _catKeyOf(t)),
                                       onToggleDone: () async {
                                         await TaskDao.instance.toggleDone(t);
+
+                                        if (!t.done) {
+                                          await NotificationService.instance
+                                              .cancel(_notificationIdOf(t));
+                                        } else {
+                                          final updatedTask =
+                                              t.copyWith(done: false);
+                                          final notifyAt =
+                                              _notificationTimeOf(updatedTask);
+                                          if (notifyAt.isAfter(DateTime.now())) {
+                                            await NotificationService.instance
+                                                .scheduleNotification(
+                                              id: _notificationIdOf(updatedTask),
+                                              title: 'เตือนงาน',
+                                              body: updatedTask.title,
+                                              date: notifyAt,
+                                            );
+                                          }
+                                        }
+
                                         await _reloadAfterSync();
                                       },
                                       onToggleStar: () async {
@@ -1072,8 +1159,11 @@ class _HomePageState extends State<HomePage> {
                                         await _reloadAfterSync();
                                       },
                                       onDelete: () async {
+                                        await NotificationService.instance
+                                            .cancel(_notificationIdOf(t));
                                         if (t.id != null) {
-                                          await TaskDao.instance.deleteById(t.id!);
+                                          await TaskDao.instance
+                                              .deleteById(t.id!);
                                         } else {
                                           await TaskDao.instance.deleteTask(t);
                                         }
@@ -1110,6 +1200,26 @@ class _HomePageState extends State<HomePage> {
                                           _catLabel(context, _catKeyOf(t)),
                                       onToggleDone: () async {
                                         await TaskDao.instance.toggleDone(t);
+
+                                        if (!t.done) {
+                                          await NotificationService.instance
+                                              .cancel(_notificationIdOf(t));
+                                        } else {
+                                          final updatedTask =
+                                              t.copyWith(done: false);
+                                          final notifyAt =
+                                              _notificationTimeOf(updatedTask);
+                                          if (notifyAt.isAfter(DateTime.now())) {
+                                            await NotificationService.instance
+                                                .scheduleNotification(
+                                              id: _notificationIdOf(updatedTask),
+                                              title: 'เตือนงาน',
+                                              body: updatedTask.title,
+                                              date: notifyAt,
+                                            );
+                                          }
+                                        }
+
                                         await _reloadAfterSync();
                                       },
                                       onToggleStar: () async {
@@ -1117,8 +1227,11 @@ class _HomePageState extends State<HomePage> {
                                         await _reloadAfterSync();
                                       },
                                       onDelete: () async {
+                                        await NotificationService.instance
+                                            .cancel(_notificationIdOf(t));
                                         if (t.id != null) {
-                                          await TaskDao.instance.deleteById(t.id!);
+                                          await TaskDao.instance
+                                              .deleteById(t.id!);
                                         } else {
                                           await TaskDao.instance.deleteTask(t);
                                         }
@@ -1220,6 +1333,15 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
   final List<Task> _tasks = [];
 
   static const String _kNearDue = 'near_due';
+
+  int _notificationIdOf(Task task) {
+    if (task.id != null) return task.id!;
+    return task.date.millisecondsSinceEpoch ~/ 1000;
+  }
+
+  DateTime _notificationTimeOf(Task task) {
+    return task.date;
+  }
 
   String _catKeyOf(Task t) {
     final c = t.category.trim();
@@ -1372,6 +1494,25 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
                                 categoryText: tr.drawerCatImportant,
                                 onToggleDone: () async {
                                   await TaskDao.instance.toggleDone(t);
+
+                                  if (!t.done) {
+                                    await NotificationService.instance
+                                        .cancel(_notificationIdOf(t));
+                                  } else {
+                                    final updatedTask = t.copyWith(done: false);
+                                    final notifyAt =
+                                        _notificationTimeOf(updatedTask);
+                                    if (notifyAt.isAfter(DateTime.now())) {
+                                      await NotificationService.instance
+                                          .scheduleNotification(
+                                        id: _notificationIdOf(updatedTask),
+                                        title: 'เตือนงาน',
+                                        body: updatedTask.title,
+                                        date: notifyAt,
+                                      );
+                                    }
+                                  }
+
                                   await _reloadAfterSync();
                                 },
                                 onToggleStar: () async {
@@ -1379,6 +1520,8 @@ class _NearDueAllPageState extends State<NearDueAllPage> {
                                   await _reloadAfterSync();
                                 },
                                 onDelete: () async {
+                                  await NotificationService.instance
+                                      .cancel(_notificationIdOf(t));
                                   if (t.id != null) {
                                     await TaskDao.instance.deleteById(t.id!);
                                   } else {

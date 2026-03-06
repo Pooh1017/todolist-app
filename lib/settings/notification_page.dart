@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart'; // AppSettingsScope
+import '../utils/notification_service.dart';
 import 'settings_base_page.dart';
 
 // ✅ l10n
@@ -14,6 +15,7 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   bool _enabled = true;
+  bool _busy = false;
 
   @override
   void didChangeDependencies() {
@@ -23,11 +25,49 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _toggle(bool v) async {
-    if (_enabled == v) return;
+    if (_enabled == v || _busy) return;
 
-    setState(() => _enabled = v);
+    setState(() {
+      _enabled = v;
+      _busy = true;
+    });
 
-    await AppSettingsScope.of(context).setNotificationsEnabled(v);
+    try {
+      await AppSettingsScope.of(context).setNotificationsEnabled(v);
+
+      if (v) {
+        await NotificationService.instance.init();
+      } else {
+        await NotificationService.instance.cancelAll();
+      }
+
+      if (!mounted) return;
+
+      final t = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            v ? t.notificationsEnabledMessage : t.notificationsDisabledMessage,
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() => _enabled = !v);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ไม่สามารถเปลี่ยนการตั้งค่าการแจ้งเตือนได้'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
   }
 
   @override
@@ -46,7 +86,7 @@ class _NotificationPageState extends State<NotificationPage> {
             ),
             subtitle: Text(t.notificationsEnableSubtitle),
             value: _enabled,
-            onChanged: _toggle,
+            onChanged: _busy ? null : _toggle,
             activeColor: cs.primary,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           ),

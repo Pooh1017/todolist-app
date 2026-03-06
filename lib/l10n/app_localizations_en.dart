@@ -499,4 +499,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get remindTypeVibrate => 'Vibrate';
+
+  @override
+  String get notificationsEnabledMessage => 'Notifications enabled';
+
+  @override
+  String get notificationsDisabledMessage => 'Notifications disabled';
 }

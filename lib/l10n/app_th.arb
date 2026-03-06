@@ -250,6 +250,9 @@
 
   "remindTypeNotify": "การแจ้งเตือน",
   "remindTypeSound": "เสียง",
-  "remindTypeVibrate": "สั่น"
+  "remindTypeVibrate": "สั่น",
+
+  "notificationsEnabledMessage": "เปิดการแจ้งเตือนแล้ว",
+  "notificationsDisabledMessage": "ปิดการแจ้งเตือนแล้ว"
 
 }

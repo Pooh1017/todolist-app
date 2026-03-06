@@ -250,6 +250,9 @@
 
   "remindTypeNotify": "Notification",
   "remindTypeSound": "Sound",
-  "remindTypeVibrate": "Vibrate"
+  "remindTypeVibrate": "Vibrate",
+  
+  "notificationsEnabledMessage": "Notifications enabled",
+"notificationsDisabledMessage": "Notifications disabled"
 
 }

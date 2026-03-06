@@ -13,6 +13,7 @@ import 'sync/sync_service.dart';
 
 // ✅ ใช้รูปแบบวันที่ตาม Settings ทั้งแอพ
 import 'utils/date_fmt.dart';
+import 'utils/notification_service.dart';
 
 // ✅ l10n
 import 'l10n/app_localizations.dart';
@@ -53,6 +54,15 @@ class _CategoryPageState extends State<CategoryPage> {
   void initState() {
     super.initState();
     _reload();
+  }
+
+  int _notificationIdOf(Task task) {
+    if (task.id != null) return task.id!;
+    return task.date.millisecondsSinceEpoch ~/ 1000;
+  }
+
+  DateTime _notificationTimeOf(Task task) {
+    return task.date;
   }
 
   String _catKeyOf(Task t) {
@@ -517,7 +527,20 @@ class _CategoryPageState extends State<CategoryPage> {
 
     if (created == null) return;
 
-    await TaskDao.instance.insert(created.copyWith(userId: uid));
+    final taskToSave = created.copyWith(userId: uid);
+    final insertedId = await TaskDao.instance.insert(taskToSave);
+    final savedTask = taskToSave.copyWith(id: insertedId);
+
+    final notifyAt = _notificationTimeOf(savedTask);
+    if (notifyAt.isAfter(DateTime.now())) {
+      await NotificationService.instance.scheduleNotification(
+        id: _notificationIdOf(savedTask),
+        title: 'เตือนงาน',
+        body: savedTask.title,
+        date: notifyAt,
+      );
+    }
+
     await _reloadAfterSync();
   }
 
@@ -657,6 +680,25 @@ class _CategoryPageState extends State<CategoryPage> {
                           onOpen: () => _openTask(x),
                           onToggleDone: () async {
                             await TaskDao.instance.toggleDone(x);
+
+                            if (!x.done) {
+                              await NotificationService.instance.cancel(
+                                _notificationIdOf(x),
+                              );
+                            } else {
+                              final updatedTask = x.copyWith(done: false);
+                              final notifyAt = _notificationTimeOf(updatedTask);
+                              if (notifyAt.isAfter(DateTime.now())) {
+                                await NotificationService.instance
+                                    .scheduleNotification(
+                                  id: _notificationIdOf(updatedTask),
+                                  title: 'เตือนงาน',
+                                  body: updatedTask.title,
+                                  date: notifyAt,
+                                );
+                              }
+                            }
+
                             await _reloadAfterSync();
                           },
                           onToggleStar: () async {
@@ -664,6 +706,9 @@ class _CategoryPageState extends State<CategoryPage> {
                             await _reloadAfterSync();
                           },
                           onDelete: () async {
+                            await NotificationService.instance.cancel(
+                              _notificationIdOf(x),
+                            );
                             if (x.id != null) {
                               await TaskDao.instance.deleteById(x.id!);
                               await _reloadAfterSync();
